@@ -1,0 +1,193 @@
+* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0.5rem 1.5rem 1rem 1.5rem;
+  background: #f7f7fb;
+  color: #222;
+}
+
+#title {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+#subtitle {
+  font-size: 0.9rem;
+  color: #555;
+  margin-bottom: 0.5rem;
+}
+
+/* Dashboard grid layout: 2 rows, 2 columns */
+#dashboard {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-rows: 320px 320px;
+  gap: 0.6rem 0.6rem;
+  grid-template-areas:
+    "parallel parallel"
+    "map small";
+  height: calc(100vh - 80px); /* title + padding */
+}
+
+/* Panels */
+.panel {
+  background: white;
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem 0.45rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#parallel-container {
+  grid-area: parallel;
+}
+
+#map-container {
+  grid-area: map;
+}
+
+#small-multiples {
+  grid-area: small;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 0.4rem;
+  /* layout:
+     [race][gender]
+     [smoking][gender] (gender spans rows)
+  */
+  grid-template-areas:
+    "race gender"
+    "smoking gender";
+}
+
+#race-container {
+  grid-area: race;
+}
+
+#smoking-container {
+  grid-area: smoking;
+}
+
+#gender-container {
+  grid-area: gender;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.small-panel {
+  padding: 0.3rem 0.4rem 0.3rem;
+}
+
+.panel-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.1rem;
+}
+
+.panel-caption {
+  font-size: 0.7rem;
+  color: #666;
+  margin-top: 0.15rem;
+}
+
+/* SVGs take remaining space inside panel */
+svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* gender cards */
+.gender-card {
+  flex: 1 1 0;
+  border-radius: 6px;
+  border: 1px solid #eee;
+  padding: 0.25rem 0.35rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
+/* Tooltip */
+.tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.83);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  opacity: 0;
+  transform: translate(-50%, -110%);
+}
+
+/* Parallel coords lines */
+.pc-line {
+  stroke-width: 0.4;
+  fill: none;
+}
+
+.pc-axis path,
+.pc-axis line {
+  stroke: #ccc;
+}
+
+.pc-axis text {
+  font-size: 0.7rem;
+}
+
+/* Map */
+.state {
+  stroke: #ffffff;
+  stroke-width: 0.5;
+  cursor: pointer;
+}
+
+.state.selected {
+  stroke: #222;
+  stroke-width: 1.2;
+}
+
+/* Radial bars */
+.radial-arc {
+  cursor: pointer;
+}
+
+/* Radar */
+.radar-axis-line {
+  stroke: #ccc;
+  stroke-width: 0.6;
+}
+
+.radar-grid {
+  stroke: #ddd;
+  stroke-width: 0.5;
+}
+
+.radar-category-label {
+  font-size: 0.65rem;
+}
+
+/* Bars in gender cards */
+.gender-bar {
+  cursor: pointer;
+}
+.gender-bar.male {
+  fill: #4c78a8;
+}
+.gender-bar.female {
+  fill: #f28eae;
+}
