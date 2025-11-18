@@ -19,9 +19,9 @@
         <h2 class="panel-title">Overview: Parallel Coordinates</h2>
         <svg id="parallel"></svg>
         <div class="panel-caption">
-          Each line = one patient (sampled if dataset is huge). Color: red =
-          diabetic, green = non-diabetic. Brush on axes to highlight subsets
-          (local to this view). Other charts filter this view.
+          Each line = one patient. Color: red =
+          diabetic, green = non-diabetic.
+          Other charts filter this view.
         </div>
       </div>
 
@@ -48,13 +48,17 @@
 
         <div id="gender-container" class="panel small-panel">
           <h3 class="panel-title">Heart Disease & Hypertension by Gender</h3>
-          <div class="gender-card" id="heart-card">
-            <div class="card-title">Heart Disease % by Gender</div>
-            <svg id="heartByGender"></svg>
-          </div>
-          <div class="gender-card" id="hyper-card">
-            <div class="card-title">Hypertension % by Gender</div>
-            <svg id="hyperByGender"></svg>
+
+          <div class="gender-cards-row">
+            <div class="gender-card" id="heart-card">
+              <div class="card-subtitle">Heart Disease % by Gender</div>
+              <svg id="heartGenderSvg"></svg>
+            </div>
+
+            <div class="gender-card" id="hyper-card">
+              <div class="card-subtitle">Hypertension % by Gender</div>
+              <svg id="hyperGenderSvg"></svg>
+            </div>
           </div>
         </div>
       </div>

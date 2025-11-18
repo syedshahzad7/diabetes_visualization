@@ -42,7 +42,7 @@ body {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: hidden; /* keep panel contents inside card */
 }
 
 #parallel-container {
@@ -105,7 +105,17 @@ svg {
   height: 100%;
 }
 
-/* gender cards */
+/* ========= Gender cards layout ========= */
+
+/* Column that holds the two gender cards */
+.gender-cards-row {
+  display: flex;
+  flex-direction: column;  /* stack Heart + Hypertension vertically */
+  gap: 0.3rem;
+  flex: 1;                 /* fill remaining height of gender panel */
+}
+
+/* Each card gets an equal share of that height */
 .gender-card {
   flex: 1 1 0;
   border-radius: 6px;
@@ -113,9 +123,18 @@ svg {
   padding: 0.25rem 0.35rem;
   display: flex;
   flex-direction: column;
+  overflow: hidden;        /* keep chart fully inside card */
 }
 
-.card-title {
+/* SVG inside each gender card fills the card body */
+.gender-card svg {
+  flex: 1;
+  width: 100%;
+}
+
+/* Titles for small cards */
+.card-title,
+.card-subtitle {
   font-size: 0.75rem;
   font-weight: 600;
   margin-bottom: 0.15rem;
@@ -181,7 +200,7 @@ svg {
   font-size: 0.65rem;
 }
 
-/* Bars in gender cards */
+/* Bars in gender cards (if you ever use these classes directly) */
 .gender-bar {
   cursor: pointer;
 }

@@ -1,127 +1,251 @@
 // js/genderCards.js
 
 let genderCardsConfig;
-let heartSvg, hyperSvg;
+let heartSvgGroup, hyperSvgGroup;
 
 function createGenderCards(data, config) {
   genderCardsConfig = config;
 
-  heartSvg = d3.select("#heartByGender");
-  hyperSvg = d3.select("#hyperByGender");
+  // Select the two SVGs from the Heart Disease & Hypertension card
+  const heartSvg = d3.select("#heartGenderSvg");
+  const hyperSvg = d3.select("#hyperGenderSvg");
 
-  const heartWidth = heartSvg.node().clientWidth || 260;
-  const heartHeight = heartSvg.node().clientHeight || 90;
-  heartSvg.attr("viewBox", [0, 0, heartWidth, heartHeight]);
+  const width = heartSvg.node().clientWidth || 220;
+  const height = heartSvg.node().clientHeight || 140;
 
-  const hyperWidth = hyperSvg.node().clientWidth || 260;
-  const hyperHeight = hyperSvg.node().clientHeight || 90;
-  hyperSvg.attr("viewBox", [0, 0, hyperWidth, hyperHeight]);
+  // Use a fixed viewBox so it scales nicely with the card
+  heartSvg.attr("viewBox", `0 0 ${width} ${height}`);
+  hyperSvg.attr("viewBox", `0 0 ${width} ${height}`);
 
-  // add group for each
-  heartSvg.append("g").attr("class", "bars");
-  hyperSvg.append("g").attr("class", "bars");
+  // A little padding inside each chart
+  const margin = { top: 20, right: 10, bottom: 30, left: 50 };
+  const innerW = width - margin.left - margin.right;
+  const innerH = height - margin.top - margin.bottom;
+
+  heartSvgGroup = heartSvg
+    .append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+
+  hyperSvgGroup = hyperSvg
+    .append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+
+  // Store basic layout so we can reuse in update
+  genderCardsConfig._layout = { width, height, innerW, innerH, margin };
 
   updateGenderCards(data);
 }
 
 function updateGenderCards(data) {
-  if (!heartSvg || !hyperSvg) return;
+  if (!heartSvgGroup || !hyperSvgGroup || !genderCardsConfig?._layout) return;
 
-  const genders = ["Male", "Female"];
+  const { innerW, innerH } = genderCardsConfig._layout;
 
-  function computeRates(metric) {
-    return genders.map((g) => {
-      const rows = data.filter((d) => d.gender === g);
-      const total = rows.length || 1;
-      const positives = rows.filter((d) => d[metric] === 1).length;
-      const rate = positives / total;
-      return { gender: g, total, positives, rate };
-    });
-  }
+  // Aggregate by gender
+  const byGender = d3.rollup(
+    data,
+    (rows) => {
+      const total = rows.length;
+      const heartCount = rows.filter((d) => d.heart_disease === 1).length;
+      const hyperCount = rows.filter((d) => d.hypertension === 1).length;
 
-  const heartStats = computeRates("heart_disease");
-  const hyperStats = computeRates("hypertension");
+      return {
+        total,
+        heartCount,
+        hyperCount,
+        heartRate: total ? heartCount / total : 0,
+        hyperRate: total ? hyperCount / total : 0
+      };
+    },
+    (d) => d.gender
+  );
 
-  drawCardBars(heartSvg, heartStats, "Heart disease", genderCardsConfig);
-  drawCardBars(hyperSvg, hyperStats, "Hypertension", genderCardsConfig);
-}
+  // Keep only Male / Female (drop "Other" and anything else)
+  const genders = Array.from(byGender.keys())
+    .filter((g) => g === "Male" || g === "Female")
+    .sort();
 
-function drawCardBars(svg, stats, label, config) {
-  const width = svg.viewBox.baseVal.width;
-  const height = svg.viewBox.baseVal.height;
+  const heartStats = genders.map((g) => ({
+    gender: g,
+    ...byGender.get(g)
+  }));
+  const hyperStats = heartStats; // same objects, different field when reading
 
-  const margin = { top: 4, right: 8, bottom: 12, left: 8 };
-  const innerW = width - margin.left - margin.right;
-  const innerH = height - margin.top - margin.bottom;
+  const maxHeart = d3.max(heartStats, (d) => d.heartRate) || 0.01;
+  const maxHyper = d3.max(hyperStats, (d) => d.hyperRate) || 0.01;
+  const maxRate = Math.max(maxHeart, maxHyper);
 
   const x = d3
     .scaleBand()
-    .domain(stats.map((d) => d.gender))
+    .domain(genders)
     .range([0, innerW])
-    .padding(0.35);
+    .padding(0.3);
 
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(stats, (d) => d.rate) || 0.01])
+    .domain([0, maxRate])
     .nice()
     .range([innerH, 0]);
 
-  const g = svg.select("g.bars").attr(
-    "transform",
-    `translate(${margin.left},${margin.top})`
-  );
+  const color = (g) =>
+    g === "Male" ? "#4C78A8" : g === "Female" ? "#F28EBC" : "#999";
 
-  const bars = g
-    .selectAll("rect.gender-bar")
-    .data(stats, (d) => d.gender);
+  // ----- Heart Disease chart -----
+  heartSvgGroup.selectAll("*").remove(); // clear before redraw
 
-  bars
+  heartSvgGroup
+    .append("g")
+    .attr("transform", `translate(0,${innerH})`)
+    .call(d3.axisBottom(x))
+    .selectAll("text")
+    .attr("font-size", 9);
+
+  heartSvgGroup
+    .append("g")
+    .call(
+      d3
+        .axisLeft(y)
+        .ticks(4)
+        .tickFormat((d) => `${(d * 100).toFixed(0)}%`)
+    )
+    .selectAll("text")
+    .attr("font-size", 9);
+
+  const heartBars = heartSvgGroup
+    .selectAll("rect.heart-bar")
+    .data(heartStats, (d) => d.gender);
+
+  heartBars
     .join(
       (enter) =>
         enter
           .append("rect")
-          .attr("class", (d) =>
-            "gender-bar " +
-            (d.gender === "Male" ? "male" : "female")
-          )
+          .attr("class", "heart-bar")
           .attr("x", (d) => x(d.gender))
           .attr("width", x.bandwidth())
+          .attr("y", innerH) // animate from bottom
+          .attr("height", 0)
+          .attr("fill", (d) => color(d.gender))
+          .attr("cursor", "pointer")
           .on("click", (event, d) => {
-            config?.onGenderClick && config.onGenderClick(d.gender);
+            genderCardsConfig?.onGenderClick &&
+              genderCardsConfig.onGenderClick(d.gender);
           })
           .on("mousemove", (event, d) => {
-            const html = `<strong>${label}</strong><br/>${d.gender}: ${(d.rate * 100).toFixed(
-              1
-            )}%<br/>${d.positives} / ${d.total}`;
-            config?.showTooltip &&
-              config.showTooltip(html, event);
+            const html = `
+              <strong>${d.gender}</strong><br/>
+              Heart disease: ${(d.heartRate * 100).toFixed(1)}%<br/>
+              Cases: ${d.heartCount} / ${d.total}
+            `;
+            genderCardsConfig?.showTooltip &&
+              genderCardsConfig.showTooltip(html, event);
           })
           .on("mouseout", () => {
-            config?.hideTooltip && config.hideTooltip();
+            genderCardsConfig?.hideTooltip &&
+              genderCardsConfig.hideTooltip();
           }),
       (update) => update,
       (exit) => exit.remove()
     )
-    .attr("y", (d) => y(d.rate))
-    .attr("height", (d) => innerH - y(d.rate));
+    .transition()
+    .duration(600)
+    .attr("y", (d) => y(d.heartRate))
+    .attr("height", (d) => innerH - y(d.heartRate));
 
-  // % labels above bars
-  const labels = g
-    .selectAll("text.bar-label")
-    .data(stats, (d) => d.gender);
-
-  labels
+  // Labels above bars
+  heartSvgGroup
+    .selectAll("text.heart-label")
+    .data(heartStats, (d) => d.gender)
     .join(
       (enter) =>
         enter
           .append("text")
-          .attr("class", "bar-label")
+          .attr("class", "heart-label")
           .attr("text-anchor", "middle")
           .attr("font-size", 9),
       (update) => update,
       (exit) => exit.remove()
     )
     .attr("x", (d) => x(d.gender) + x.bandwidth() / 2)
-    .attr("y", (d) => y(d.rate) - 2)
-    .text((d) => (d.rate * 100).toFixed(1) + "%");
+    .attr("y", (d) => y(d.heartRate) - 4)
+    .text((d) => `${(d.heartRate * 100).toFixed(1)}%`);
+
+  // ----- Hypertension chart -----
+  hyperSvgGroup.selectAll("*").remove();
+
+  hyperSvgGroup
+    .append("g")
+    .attr("transform", `translate(0,${innerH})`)
+    .call(d3.axisBottom(x))
+    .selectAll("text")
+    .attr("font-size", 9);
+
+  hyperSvgGroup
+    .append("g")
+    .call(
+      d3
+        .axisLeft(y)
+        .ticks(4)
+        .tickFormat((d) => `${(d * 100).toFixed(0)}%`)
+    )
+    .selectAll("text")
+    .attr("font-size", 9);
+
+  const hyperBars = hyperSvgGroup
+    .selectAll("rect.hyper-bar")
+    .data(hyperStats, (d) => d.gender);
+
+  hyperBars
+    .join(
+      (enter) =>
+        enter
+          .append("rect")
+          .attr("class", "hyper-bar")
+          .attr("x", (d) => x(d.gender))
+          .attr("width", x.bandwidth())
+          .attr("y", innerH)
+          .attr("height", 0)
+          .attr("fill", (d) => color(d.gender))
+          .attr("cursor", "pointer")
+          .on("click", (event, d) => {
+            genderCardsConfig?.onGenderClick &&
+              genderCardsConfig.onGenderClick(d.gender);
+          })
+          .on("mousemove", (event, d) => {
+            const html = `
+              <strong>${d.gender}</strong><br/>
+              Hypertension: ${(d.hyperRate * 100).toFixed(1)}%<br/>
+              Cases: ${d.hyperCount} / ${d.total}
+            `;
+            genderCardsConfig?.showTooltip &&
+              genderCardsConfig.showTooltip(html, event);
+          })
+          .on("mouseout", () => {
+            genderCardsConfig?.hideTooltip &&
+              genderCardsConfig.hideTooltip();
+          }),
+      (update) => update,
+      (exit) => exit.remove()
+    )
+    .transition()
+    .duration(600)
+    .attr("y", (d) => y(d.hyperRate))
+    .attr("height", (d) => innerH - y(d.hyperRate));
+
+  hyperSvgGroup
+    .selectAll("text.hyper-label")
+    .data(hyperStats, (d) => d.gender)
+    .join(
+      (enter) =>
+        enter
+          .append("text")
+          .attr("class", "hyper-label")
+          .attr("text-anchor", "middle")
+          .attr("font-size", 9),
+      (update) => update,
+      (exit) => exit.remove()
+    )
+    .attr("x", (d) => x(d.gender) + x.bandwidth() / 2)
+    .attr("y", (d) => y(d.hyperRate) - 4)
+    .text((d) => `${(d.hyperRate * 100).toFixed(1)}%`);
 }
