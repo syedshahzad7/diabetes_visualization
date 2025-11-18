@@ -9,7 +9,7 @@ let raceMaxR, raceRingThickness, raceRingGap, raceBaseInnerRadius;
  * Radial bar chart: one concentric arc per race, like the reference example.
  * All arcs start from a common baseline angle and sweep ~270°.
  * Longer bars are on the outer rings; shorter bars are near the center.
- * Labels are stacked in the central hole.
+ * Labels are positioned to the left of each bar, horizontally aligned.
  */
 function createRaceRadial(data, raceColumns, config) {
   raceRadialConfig = config;
@@ -31,7 +31,7 @@ function createRaceRadial(data, raceColumns, config) {
   // ---- Geometry for concentric rings ----
   raceRingGap = 4;
 
-  // LARGE inner radius so there is a big central hole for labels
+  // LARGE inner radius so there is a big central hole
   raceBaseInnerRadius = raceMaxR * 0.45;
 
   raceRingThickness =
@@ -55,26 +55,29 @@ function updateRaceRadial(data) {
   if (!raceRadialSvg) return;
 
   // --- Aggregate stats per race ---
-  // IMPORTANT: quantize rate to 0.1% so arcs and labels use the same value.
+  // Quantize rate to 0.1% so arcs and labels use the same value.
   let stats = raceRadialColumns.map((rc) => {
     const rows = data.filter((d) => +d[rc.key] === 1);
     const total = rows.length;
     const diabetics = rows.filter((d) => d.diabetes === 1).length;
 
-    const rawRate = total ? diabetics / total : 0;          // e.g. 0.08672
-    const pct1 = Number((rawRate * 100).toFixed(1));        // e.g. 8.7
-    const rate = pct1 / 100;                                // 0.087 (quantized)
+    const rawRate = total ? diabetics / total : 0; // e.g. 0.08672
+    const pct1 = Number((rawRate * 100).toFixed(1)); // e.g. 8.7
+    const rate = pct1 / 100; // 0.087 (quantized)
 
     return {
       ...rc,
       total,
       diabetics,
-      rate,     // quantized rate used for geometry
-      pct1      // one-decimal percent used for labels
+      rate, // quantized rate used for geometry
+      pct1  // one-decimal percent used for labels
     };
   });
 
   if (!stats.length) return;
+
+  // number of rings
+  const n = stats.length;
 
   // Sort races by prevalence so longest (max) goes on the outer ring
   stats.sort((a, b) => b.rate - a.rate);
@@ -102,8 +105,6 @@ function updateRaceRadial(data) {
 
   const colorScale = d3.scaleOrdinal(d3.schemeSet2);
   const arcGen = d3.arc();
-
-  const n = stats.length;
 
   // --- Background arcs (full span = maxRate) ---
   const bgArcs = raceRadialSvg
@@ -194,14 +195,10 @@ function updateRaceRadial(data) {
       });
     });
 
-  // --- Labels: centered inside the large hole, stacked vertically ---
-
+  // --- Labels: positioned to the left of each ring, horizontally aligned ---
   const labels = raceRadialSvg
     .selectAll("text.race-label")
     .data(stats, (d) => d.key);
-
-  const lineHeight = 12;
-  const startY = -((stats.length - 1) * lineHeight) / 2; // vertically centered
 
   labels
     .join(
@@ -209,12 +206,21 @@ function updateRaceRadial(data) {
         enter
           .append("text")
           .attr("class", "race-label")
-          .attr("text-anchor", "middle")
-          .attr("font-size", 9),
+          .attr("text-anchor", "end")
+          .attr("font-size", 9)
+          .attr("alignment-baseline", "middle"),
       (update) => update,
       (exit) => exit.remove()
     )
-    .attr("x", 0)
-    .attr("y", (d, i) => startY + i * lineHeight)
+    .attr("x", -raceMaxR - 8) // to the left of the chart
+    .attr("y", (d, i) => {
+      // Middle radius of each ring, projected straight up (12 o'clock)
+      const ringIndex = i;
+      const inner =
+        raceBaseInnerRadius +
+        (n - 1 - ringIndex) * (raceRingThickness + raceRingGap);
+      const outer = inner + raceRingThickness;
+      return -(inner + outer) / 2;
+    })
     .text((d) => `${d.label} ${d.pct1.toFixed(1)}%`);
 }
