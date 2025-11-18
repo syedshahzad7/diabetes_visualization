@@ -1,8 +1,16 @@
 // js/raceRadial.js
 
 let raceRadialSvg, raceRadialConfig, raceRadialColumns;
-let raceRadiusScale;
 
+// Geometry parameters (computed once based on SVG size & number of races)
+let raceMaxR, raceRingThickness, raceRingGap, raceBaseInnerRadius;
+
+/**
+ * Radial bar chart: one concentric arc per race, like the reference example.
+ * All arcs start from a common baseline angle and sweep ~270°.
+ * Longer bars are on the outer rings; shorter bars are near the center.
+ * Labels are stacked in the central hole.
+ */
 function createRaceRadial(data, raceColumns, config) {
   raceRadialConfig = config;
   raceRadialColumns = raceColumns;
@@ -10,11 +18,35 @@ function createRaceRadial(data, raceColumns, config) {
   const svg = d3.select("#raceRadial");
   const width = svg.node().clientWidth || 260;
   const height = svg.node().clientHeight || 260;
-  svg.attr("viewBox", [0, 0, width, height]);
+
+  // Extra padding so nothing touches the edges
+  const padding = 20;
+
+  // Max radius that comfortably fits in the panel
+  raceMaxR = Math.min(width, height) / 2 - padding;
+  raceMaxR *= 0.8; // shrink a bit more to avoid cropping
+
+  const n = raceColumns.length;
+
+  // ---- Geometry for concentric rings ----
+  raceRingGap = 4;
+
+  // LARGE inner radius so there is a big central hole for labels
+  raceBaseInnerRadius = raceMaxR * 0.45;
+
+  raceRingThickness =
+    (raceMaxR - raceBaseInnerRadius - (n - 1) * raceRingGap) / n;
+  if (raceRingThickness < 6) raceRingThickness = 6;
+
+  // Center in the middle of the panel
+  const cx = width / 2;
+  const cy = height / 2;
+
+  svg.attr("viewBox", `0 0 ${width} ${height}`);
 
   raceRadialSvg = svg
     .append("g")
-    .attr("transform", `translate(${width / 2},${height / 2})`);
+    .attr("transform", `translate(${cx},${cy})`);
 
   updateRaceRadial(data);
 }
@@ -22,31 +54,94 @@ function createRaceRadial(data, raceColumns, config) {
 function updateRaceRadial(data) {
   if (!raceRadialSvg) return;
 
-  const stats = raceRadialColumns.map((rc) => {
+  // --- Aggregate stats per race ---
+  // IMPORTANT: quantize rate to 0.1% so arcs and labels use the same value.
+  let stats = raceRadialColumns.map((rc) => {
     const rows = data.filter((d) => +d[rc.key] === 1);
     const total = rows.length;
     const diabetics = rows.filter((d) => d.diabetes === 1).length;
-    const rate = total ? diabetics / total : 0;
-    return { ...rc, total, diabetics, rate };
+
+    const rawRate = total ? diabetics / total : 0;          // e.g. 0.08672
+    const pct1 = Number((rawRate * 100).toFixed(1));        // e.g. 8.7
+    const rate = pct1 / 100;                                // 0.087 (quantized)
+
+    return {
+      ...rc,
+      total,
+      diabetics,
+      rate,     // quantized rate used for geometry
+      pct1      // one-decimal percent used for labels
+    };
   });
 
-  const maxRate =
-    d3.max(stats, (d) => d.rate) || 0.0001;
+  if (!stats.length) return;
 
-  const innerR = 40;
-  const outerR = 100;
+  // Sort races by prevalence so longest (max) goes on the outer ring
+  stats.sort((a, b) => b.rate - a.rate);
 
-  raceRadiusScale = d3
-    .scaleLinear()
-    .domain([0, maxRate])
-    .range([innerR, outerR]);
+  let [minRate, maxRate] = d3.extent(stats, (d) => d.rate);
+  if (maxRate == null || maxRate === 0) {
+    maxRate = 0.0001;
+    minRate = 0;
+  }
+  if (minRate === maxRate) {
+    // All equal – still give some span
+    minRate = 0;
+  }
 
+  // Common baseline: start at the rightmost direction (3 o'clock)
+  const baselineStart = 0;
+  const totalSpan = Math.PI * 1.5; // 270 degrees, sweeping clockwise
+
+  // Minimum visible arc + amplified variation
+  const baseAngle = totalSpan / 6; // baseline for the smallest bar
   const angleScale = d3
-    .scaleBand()
-    .domain(stats.map((d) => d.key))
-    .range([0, 2 * Math.PI])
-    .padding(0.1);
+    .scaleLinear()
+    .domain([minRate, maxRate])
+    .range([0, totalSpan - baseAngle]);
 
+  const colorScale = d3.scaleOrdinal(d3.schemeSet2);
+  const arcGen = d3.arc();
+
+  const n = stats.length;
+
+  // --- Background arcs (full span = maxRate) ---
+  const bgArcs = raceRadialSvg
+    .selectAll("path.radial-arc-bg")
+    .data(stats, (d) => d.key);
+
+  bgArcs
+    .join(
+      (enter) =>
+        enter
+          .append("path")
+          .attr("class", "radial-arc-bg")
+          .attr("fill", "#f0f0f0")
+          .attr("stroke", "#ddd")
+          .attr("stroke-width", 0.5),
+      (update) => update,
+      (exit) => exit.remove()
+    )
+    .attr("d", (d, i) => {
+      // i=0 (highest rate) on the outermost ring
+      const ringIndex = i;
+      const inner =
+        raceBaseInnerRadius +
+        (n - 1 - ringIndex) * (raceRingThickness + raceRingGap);
+      const outer = inner + raceRingThickness;
+
+      const startAngle = baselineStart;
+      const endAngle = baselineStart + baseAngle + angleScale(maxRate);
+
+      return arcGen({
+        innerRadius: inner,
+        outerRadius: outer,
+        startAngle,
+        endAngle
+      });
+    });
+
+  // --- Data arcs (actual prevalence) ---
   const arcs = raceRadialSvg
     .selectAll("path.radial-arc")
     .data(stats, (d) => d.key);
@@ -57,9 +152,9 @@ function updateRaceRadial(data) {
         enter
           .append("path")
           .attr("class", "radial-arc")
-          .attr("fill", (d, i) => d3.schemeSet2[i % d3.schemeSet2.length])
           .attr("stroke", "#444")
-          .attr("stroke-width", 0.4)
+          .attr("stroke-width", 0.7)
+          .attr("cursor", "pointer")
           .on("click", (event, d) => {
             raceRadialConfig?.onRaceClick &&
               raceRadialConfig.onRaceClick(d.key);
@@ -67,7 +162,7 @@ function updateRaceRadial(data) {
           .on("mousemove", (event, d) => {
             const html = `
               <strong>${d.label}</strong><br/>
-              Diabetes prevalence: ${(d.rate * 100).toFixed(1)}%<br/>
+              Diabetes prevalence: ${d.pct1.toFixed(1)}%<br/>
               Diabetic: ${d.diabetics} / Total: ${d.total}
             `;
             raceRadialConfig?.showTooltip &&
@@ -80,24 +175,33 @@ function updateRaceRadial(data) {
       (update) => update,
       (exit) => exit.remove()
     )
-    .attr("d", (d) => {
-      const a0 = angleScale(d.key);
-      const a1 = a0 + angleScale.bandwidth();
-      const r0 = innerR;
-      const r1 = raceRadiusScale(d.rate);
+    .attr("fill", (d) => colorScale(d.key))
+    .attr("d", (d, i) => {
+      const ringIndex = i;
+      const inner =
+        raceBaseInnerRadius +
+        (n - 1 - ringIndex) * (raceRingThickness + raceRingGap);
+      const outer = inner + raceRingThickness;
 
-      return d3.arc()({
-        innerRadius: r0,
-        outerRadius: r1,
-        startAngle: a0,
-        endAngle: a1
+      const startAngle = baselineStart;
+      const endAngle = baselineStart + baseAngle + angleScale(d.rate);
+
+      return arcGen({
+        innerRadius: inner,
+        outerRadius: outer,
+        startAngle,
+        endAngle
       });
     });
 
-  // Labels
+  // --- Labels: centered inside the large hole, stacked vertically ---
+
   const labels = raceRadialSvg
     .selectAll("text.race-label")
     .data(stats, (d) => d.key);
+
+  const lineHeight = 12;
+  const startY = -((stats.length - 1) * lineHeight) / 2; // vertically centered
 
   labels
     .join(
@@ -110,16 +214,7 @@ function updateRaceRadial(data) {
       (update) => update,
       (exit) => exit.remove()
     )
-    .attr("transform", (d) => {
-      const angle =
-        angleScale(d.key) + angleScale.bandwidth() / 2;
-      const r = outerR + 14;
-      const x = Math.cos(angle - Math.PI / 2) * r;
-      const y = Math.sin(angle - Math.PI / 2) * r;
-      return `translate(${x},${y})`;
-    })
-    .text(
-      (d) =>
-        `${d.label} ${(d.rate * 100).toFixed(1)}%`
-    );
+    .attr("x", 0)
+    .attr("y", (d, i) => startY + i * lineHeight)
+    .text((d) => `${d.label} ${d.pct1.toFixed(1)}%`);
 }
