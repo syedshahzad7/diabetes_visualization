@@ -212,7 +212,7 @@ function updateRaceRadial(data) {
       (update) => update,
       (exit) => exit.remove()
     )
-    .attr("x", -raceMaxR - 8) // to the left of the chart
+    .attr("x", -raceMaxR + 27) 
     .attr("y", (d, i) => {
       // Middle radius of each ring, projected straight up (12 o'clock)
       const ringIndex = i;
