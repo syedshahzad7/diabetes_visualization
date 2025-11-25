@@ -68,13 +68,57 @@ function applyFilters() {
   console.log("Current filter state:", filters, "rows:", filtered.length);
 }
 
+// Deterministic "random" score based on index (for reproducible sampling)
+function deterministicScore(i) {
+  // Simple hash based on sine; deterministic across reloads
+  const x = Math.sin((i + 1) * 7919) * 10000;
+  return x - Math.floor(x);
+}
+
 // MAIN LOAD
 Promise.all([
   d3.csv("data/diabetes_dataset.csv", d3.autoType),
   d3.json("data/us-states.geojson")
 ]).then(([rows, geo]) => {
-  fullData = rows;
   usGeo = geo;
+
+  // Split dataset into diabetics and non-diabetics
+  const diabetics = rows.filter((d) => d.diabetes === 1);
+  const nonDiabetics = rows.filter((d) => d.diabetes === 0);
+
+  console.log("Total rows:", rows.length);
+  console.log("Diabetics:", diabetics.length, "Non-diabetics:", nonDiabetics.length);
+
+  // Target: keep all diabetic records, and sample the same number of non-diabetics (up to 8500)
+  const targetDiab = Math.min(diabetics.length, 8500);
+  const targetNonDiab = Math.min(nonDiabetics.length, targetDiab);
+
+  // (Optional) if diabetics > target, you could also sample diabetics;
+  // here we keep all diabetics if <= 8500, which matches your dataset.
+  const keptDiabetics = diabetics.slice(0, targetDiab);
+
+  // Deterministically sample non-diabetic records
+  const nonDWithScore = nonDiabetics.map((d, i) => ({
+    d,
+    score: deterministicScore(i)
+  }));
+
+  nonDWithScore.sort((a, b) => a.score - b.score);
+
+  const sampledNonDiabetics = nonDWithScore
+    .slice(0, targetNonDiab)
+    .map((o) => o.d);
+
+  // Balanced dataset used by all visualizations
+  fullData = keptDiabetics.concat(sampledNonDiabetics);
+
+  console.log("Balanced fullData size:", fullData.length);
+  console.log(
+    "Balanced diabetics:",
+    fullData.filter((d) => d.diabetes === 1).length,
+    "Balanced non-diabetics:",
+    fullData.filter((d) => d.diabetes === 0).length
+  );
 
   // Define which columns encode race in your CSV
   raceColumns = [
@@ -85,7 +129,7 @@ Promise.all([
     { key: "race:Other", label: "Other" }
   ];
 
-  // Smoking categories present in data
+  // Smoking categories present in *balanced* data
   smokingCategories = Array.from(
     new Set(fullData.map((d) => d.smoking_history))
   )
@@ -94,7 +138,7 @@ Promise.all([
 
   console.log("Smoking categories found:", smokingCategories);
 
-  // Initialize each visualization once
+  // Initialize each visualization once, using the balanced fullData
   createParallelCoords(fullData, {
     showTooltip,
     hideTooltip
