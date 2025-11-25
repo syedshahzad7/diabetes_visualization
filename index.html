@@ -2,30 +2,52 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Diabetes Dashboard (D3.js)</title>
+    <title>Diabetes Explorer</title>
     <link rel="stylesheet" href="css/style.css" />
     <script src="https://d3js.org/d3.v7.min.js"></script>
   </head>
   <body>
-    <!-- Top bar: title + reset button -->
+    <!-- Top bar: title + meta info + reset button -->
     <div id="top-bar">
-      <h1 id="title">Diabetes Dashboard</h1>
-      <button id="reset-btn">Reset dashboard</button>
+      <h1 id="title">Clinical Diabetes Profile Explorer</h1>
+
+      <div id="header-meta">
+        <span class="meta-item">
+          <strong>Data source:</strong>
+          Comprehensive Diabetes Clinical Dataset (Kaggle)
+        </span>
+        <span class="meta-item">
+          <strong>Team members:</strong>
+          Syed Shahzad Abdul Wajid, Shrinidhi Kulkarni
+        </span>
+        <button id="reset-btn">Reset dashboard</button>
+      </div>
     </div>
 
-    <div id="subtitle">
-    </div>
+    <div id="subtitle"></div>
 
     <!-- Whole dashboard lives in one viewport (CSS makes it grid) -->
     <div id="dashboard">
       <!-- Row 1: full-width parallel coordinates -->
       <div id="parallel-container" class="panel">
-        <h2 class="panel-title">Overview: Parallel Coordinates</h2>
+        <h2 class="panel-title">Diabetes Status Across Key Clinical Measures</h2>
         <svg id="parallel"></svg>
+
+        <!-- Parallel coordinates legend -->
+        <div class="pc-legend">
+          <div class="pc-legend-item">
+            <span class="pc-legend-swatch pc-legend-diabetic"></span>
+            <span>Diabetic</span>
+          </div>
+          <div class="pc-legend-item">
+            <span class="pc-legend-swatch pc-legend-nondiabetic"></span>
+            <span>Non-diabetic</span>
+          </div>
+        </div>
+
         <div class="panel-caption">
-          Each line = one patient. Color: red =
-          diabetic, green = non-diabetic.
-          Other charts filter this view.
+          Each line = one patient (sampled). Brush on axes to highlight
+          subsets. Other charts filter this view.
         </div>
       </div>
 
@@ -46,7 +68,9 @@
         </div>
 
         <div id="smoking-container" class="panel small-panel">
-          <h3 class="panel-title">Smoking History<br/>Composition</h3>
+          <h3 class="panel-title">
+            Smoking History<br />Composition
+          </h3>
           <svg id="smokingRadar"></svg>
         </div>
 

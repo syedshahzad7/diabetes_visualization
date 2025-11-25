@@ -11,17 +11,39 @@ body {
   color: #222;
 }
 
-/* Top bar: title + reset button */
+/* Top bar: title + meta info + reset button */
 #top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.25rem;
+  gap: 1.25rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;               /* allows wrap on smaller screens */
+
+  background-color: #f3f4f690;   /* light grey */
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06); /* very soft shadow */
 }
 
 #title {
   margin: 0;
   font-size: 1.6rem;
+}
+
+/* Right side: meta info + button */
+#header-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: #6b7280; /* subtle grey for meta text */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.meta-item {
+  white-space: nowrap; /* keep each item together on wide screens */
 }
 
 #subtitle {
@@ -36,7 +58,7 @@ body {
   font-size: 0.8rem;
   border-radius: 999px;
   border: none;
-  background: #2563eb;         /* blue */
+  background: #2563eb; /* blue */
   color: #ffffff;
   cursor: pointer;
   box-shadow: 0 1px 4px rgba(37, 99, 235, 0.4);
@@ -47,7 +69,7 @@ body {
 }
 
 #reset-btn:hover {
-  background: #1d4ed8;         /* slightly darker blue */
+  background: #1d4ed8; /* slightly darker blue */
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.55);
 }
 
@@ -76,7 +98,8 @@ body {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* keep panel contents inside card */
+  overflow: hidden;            /* keep panel contents inside card */
+  border: 1px solid #dcdfe6;   /* slightly darker border */
 }
 
 #parallel-container {
@@ -139,25 +162,56 @@ svg {
   height: 100%;
 }
 
+/* ========= Parallel coords legend ========= */
+
+.pc-legend {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  align-items: center;
+  margin-top: 0.15rem;
+  margin-bottom: 0.15rem;
+}
+
+.pc-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.pc-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.pc-legend-diabetic {
+  background-color: #e74c3c; /* matches diabetic line color */
+}
+
+.pc-legend-nondiabetic {
+  background-color: #2ecc71; /* matches non-diabetic line color */
+}
+
 /* ========= Gender cards layout ========= */
 
 /* Column that holds the two gender cards */
 .gender-cards-row {
   display: flex;
-  flex-direction: column;  /* stack Heart + Hypertension vertically */
+  flex-direction: column; /* stack Heart + Hypertension vertically */
   gap: 0.3rem;
-  flex: 1;                 /* fill remaining height of gender panel */
+  flex: 1; /* fill remaining height of gender panel */
 }
 
 /* Each card gets an equal share of that height */
 .gender-card {
   flex: 1 1 0;
   border-radius: 6px;
-  border: 1px solid #eee;
+  border: 1px solid #d2d6df;   /* darker than #eee for clearer edge */
   padding: 0.25rem 0.35rem;
   display: flex;
   flex-direction: column;
-  overflow: hidden;        /* keep chart fully inside card */
+  overflow: hidden; /* keep chart fully inside card */
 }
 
 /* SVG inside each gender card fills the card body */
