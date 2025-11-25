@@ -103,8 +103,16 @@ function updateRaceRadial(data) {
     .domain([minRate, maxRate])
     .range([0, totalSpan - baseAngle]);
 
-  const colorScale = d3.scaleOrdinal(d3.schemeSet2);
   const arcGen = d3.arc();
+
+  // Custom, semantic-safe palette (no green, gender blue, or gender pink)
+  const raceColorMap = {
+    "race:AfricanAmerican": "#fdb462", // orange
+    "race:Asian": "#bc80bd",           // purple
+    "race:Caucasian": "#8dd3c7",       // teal
+    "race:Hispanic": "#ffed6f",        // soft yellow
+    "race:Other": "#b15928"            // brown
+  };
 
   // --- Background arcs (full span = maxRate) ---
   const bgArcs = raceRadialSvg
@@ -176,7 +184,7 @@ function updateRaceRadial(data) {
       (update) => update,
       (exit) => exit.remove()
     )
-    .attr("fill", (d) => colorScale(d.key))
+    .attr("fill", (d) => raceColorMap[d.key] || "#999")
     .attr("d", (d, i) => {
       const ringIndex = i;
       const inner =
@@ -212,7 +220,7 @@ function updateRaceRadial(data) {
       (update) => update,
       (exit) => exit.remove()
     )
-    .attr("x", -raceMaxR + 27) 
+    .attr("x", -raceMaxR + 27)
     .attr("y", (d, i) => {
       // Middle radius of each ring, projected straight up (12 o'clock)
       const ringIndex = i;

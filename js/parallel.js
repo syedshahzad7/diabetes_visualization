@@ -18,9 +18,10 @@ function createParallelCoords(data, config) {
 
   // Use current width but cap height so the chart isn't huge
   const width = svg.node().clientWidth || 900;
-  const height = 220; // <- smaller fixed height
+  const height = 220; // smaller fixed height
 
-  const margin = { top: 20, right: 20, bottom: 10, left: 40 };
+  // Slightly larger left margin so the first axis/title has room
+  const margin = { top: 20, right: 20, bottom: 10, left: 80 };
   pcInnerWidth = width - margin.left - margin.right;
   pcInnerHeight = height - margin.top - margin.bottom;
 
@@ -83,19 +84,36 @@ function createParallelCoords(data, config) {
     const scale = pcYScales[dim.key];
     const axis = d3.axisLeft(scale).ticks(4); // fewer ticks
 
-    g.append("g")
+    const axisG = g
+      .append("g")
       .attr("class", "pc-axis")
-      .call(axis)
-      .selectAll("text")
-      .attr("font-size", 8); // smaller tick labels
+      .call(axis);
 
-    g.append("text")
+    axisG
+      .selectAll("text")
+      .attr("font-size", 8);
+
+    // Move "Diabetic / Non-diabetic" tick labels left so they don't overlap lines
+    if (dim.key === "diabetes") {
+      axisG
+        .selectAll("text")
+        .attr("text-anchor", "end")
+        .attr("dx", -6); // shift left
+    }
+
+    const titleText = g.append("text")
       .attr("class", "axis-title")
       .attr("y", -10)
-      .attr("text-anchor", "middle")
-      .attr("font-size", 11)   // smaller titles
+      .attr("font-size", 11) // smaller titles
       .attr("font-weight", 600)
       .text(dim.label);
+
+    // Adjust text-anchor for Blood Glucose label to prevent cropping
+    if (dim.key === "blood_glucose_level") {
+      titleText.attr("text-anchor", "end").attr("dx", -5);
+    } else {
+      titleText.attr("text-anchor", "middle");
+    }
 
     const brush = d3
       .brushY()
@@ -135,7 +153,7 @@ function createParallelCoords(data, config) {
 function updateParallelCoords(data) {
   if (!pcSvg) return;
 
-  const maxLines = 20000; // you already set 2000 in main.js sampling, that's fine
+  const maxLines = 20000; // you already sample in main.js; this is a secondary cap
   const sampled = data.length > maxLines ? data.slice(0, maxLines) : data;
 
   const lines = pcLinesG
