@@ -16,7 +16,9 @@ function createSmokingRadar(data, categories, config) {
     .append("g")
     .attr("transform", `translate(${width / 2},${height / 2})`);
 
-  radarRadius = Math.min(width, height) / 2 - 20;
+  // Use most of the panel (slight margin)
+  radarRadius = Math.min(width, height) / 2 - 5;
+
   radarAngleScale = d3
     .scaleBand()
     .domain(smokingCats)
@@ -44,17 +46,14 @@ function updateSmokingRadar(data) {
     return n / totalN;
   });
 
-  const maxVal = Math.max(
-    0.001,
-    d3.max([...redVals, ...greenVals])
-  );
+  const maxVal = Math.max(0.001, d3.max([...redVals, ...greenVals]));
 
   radarRadiusScale = d3
     .scaleLinear()
     .domain([0, maxVal])
     .range([0, radarRadius]);
 
-  // Background grid circles (0%, 25%, 50%, 75%, 100%)
+  // Background grid circles (25, 50, 75, 100% of max)
   const levels = [0.25, 0.5, 0.75, 1.0];
 
   const grid = smokingRadarSvg
@@ -94,11 +93,10 @@ function updateSmokingRadar(data) {
 
   axesEnter.each(function (category) {
     const angle =
-      radarAngleScale(category) +
-      radarAngleScale.bandwidth() / 2;
+      radarAngleScale(category) + radarAngleScale.bandwidth() / 2;
 
-    const x = Math.cos(angle - Math.PI / 2) * radarRadius;
-    const y = Math.sin(angle - Math.PI / 2) * radarRadius;
+    const xAxis = Math.cos(angle - Math.PI / 2) * radarRadius;
+    const yAxis = Math.sin(angle - Math.PI / 2) * radarRadius;
 
     const g = d3.select(this);
 
@@ -108,18 +106,29 @@ function updateSmokingRadar(data) {
       .attr("class", "radar-axis-line")
       .attr("x1", 0)
       .attr("y1", 0)
-      .attr("x2", x)
-      .attr("y2", y);
+      .attr("x2", xAxis)
+      .attr("y2", yAxis);
 
-    g.selectAll("text.radar-category-label")
+    // Slightly pull labels inward (1.08) so top ones aren't clipped
+    const labelRadius = radarRadius * 1.08;
+    const xLabel = Math.cos(angle - Math.PI / 2) * labelRadius;
+    const yLabel = Math.sin(angle - Math.PI / 2) * labelRadius;
+
+    const labelText = g.selectAll("text.radar-category-label")
       .data([category])
       .join("text")
       .attr("class", "radar-category-label")
-      .attr("x", x * 1.05)
-      .attr("y", y * 1.05)
-      .attr("text-anchor", "middle")
+      .attr("x", xLabel)
+      .attr("y", yLabel)
       .attr("alignment-baseline", "middle")
       .text(category);
+
+    // Special adjustment for 'never' label to move it left
+    if (category === "never") {
+      labelText.attr("text-anchor", "end").attr("dx", -8);
+    } else {
+      labelText.attr("text-anchor", "middle");
+    }
   });
 
   const lineRadial = d3
@@ -131,8 +140,7 @@ function updateSmokingRadar(data) {
   function makePoints(values) {
     return smokingCats.map((cat, i) => {
       const angle =
-        radarAngleScale(cat) +
-        radarAngleScale.bandwidth() / 2;
+        radarAngleScale(cat) + radarAngleScale.bandwidth() / 2;
       return {
         category: cat,
         value: values[i],
@@ -188,8 +196,7 @@ function updateSmokingRadar(data) {
 
   vertexGroups
     .join(
-      (enter) =>
-        enter.append("g").attr("class", "radar-vertices"),
+      (enter) => enter.append("g").attr("class", "radar-vertices"),
       (update) => update
     )
     .each(function (group) {
