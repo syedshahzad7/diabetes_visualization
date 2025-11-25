@@ -30,6 +30,16 @@ function hideTooltip() {
   tooltip.style("opacity", 0);
 }
 
+// ----- Reset dashboard button -----
+// (script is loaded at the end of <body>, so DOM elements already exist)
+const resetBtn = document.getElementById("reset-btn");
+if (resetBtn) {
+  resetBtn.addEventListener("click", () => {
+    // Easiest way to fully clear all filters, brushes, selections, etc.
+    window.location.reload();
+  });
+}
+
 // Toggle helper (click again to clear)
 function toggleFilter(key, value) {
   filters[key] = filters[key] === value ? null : value;

@@ -11,6 +11,14 @@ body {
   color: #222;
 }
 
+/* Top bar: title + reset button */
+#top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
 #title {
   margin: 0;
   font-size: 1.6rem;
@@ -20,6 +28,32 @@ body {
   font-size: 0.9rem;
   color: #555;
   margin-bottom: 0.5rem;
+}
+
+/* Reset button styling */
+#reset-btn {
+  padding: 0.25rem 0.9rem;
+  font-size: 0.8rem;
+  border-radius: 999px;
+  border: none;
+  background: #2563eb;         /* blue */
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.4);
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.05s ease;
+}
+
+#reset-btn:hover {
+  background: #1d4ed8;         /* slightly darker blue */
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.55);
+}
+
+#reset-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.4);
 }
 
 /* Dashboard grid layout: 2 rows, 2 columns */
