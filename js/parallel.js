@@ -16,6 +16,27 @@ let pcCurrentData = [];
 // null = show both; "diabetic" = only diabetic; "non-diabetic" = only non-diabetic
 let pcLegendFilter = null;
 
+// Floating comparison panel (HTML)
+let pcDetailPanel = null;
+
+function ensurePcDetailPanel() {
+  if (pcDetailPanel) return pcDetailPanel;
+
+  pcDetailPanel = document.createElement("div");
+  pcDetailPanel.id = "pc-detail-panel";
+  pcDetailPanel.className = "pc-detail-panel";
+  pcDetailPanel.style.display = "none";
+  document.body.appendChild(pcDetailPanel);
+
+  return pcDetailPanel;
+}
+
+function hidePcDetailPanel() {
+  if (pcDetailPanel) {
+    pcDetailPanel.style.display = "none";
+  }
+}
+
 function createParallelCoords(data, config) {
   pcConfig = config;
 
@@ -123,8 +144,10 @@ function createParallelCoords(data, config) {
     function brushed({ selection }) {
       const allLines = pcLinesG.selectAll(".pc-line");
       if (!selection) {
-        // reset to base opacity when brush cleared
-        allLines.attr("opacity", 0.05);
+        // reset to base style when brush cleared
+        allLines
+          .attr("opacity", 0.05)
+          .attr("stroke-width", 0.4);
         return;
       }
       const [y0, y1] = selection;
@@ -134,7 +157,9 @@ function createParallelCoords(data, config) {
         const y = pcYScales[dimKey](val);
         const highlight = y >= y0 && y <= y1;
         // Stronger contrast: bright for selected, ultra-faint for others
-        d3.select(this).attr("opacity", highlight ? 0.7 : 0.003);
+        d3.select(this)
+          .attr("opacity", highlight ? 0.7 : 0.003)
+          .attr("stroke-width", highlight ? 0.8 : 0.3);
       });
     }
   });
@@ -185,6 +210,7 @@ function createParallelCoords(data, config) {
         pcLegendFilter === "diabetic" ? null : "diabetic";
       updateParallelCoords(pcCurrentData);
       refreshLegendStyles();
+      hidePcDetailPanel();
     });
   }
 
@@ -195,6 +221,7 @@ function createParallelCoords(data, config) {
         pcLegendFilter === "non-diabetic" ? null : "non-diabetic";
       updateParallelCoords(pcCurrentData);
       refreshLegendStyles();
+      hidePcDetailPanel();
     });
   }
 
@@ -229,6 +256,9 @@ function createParallelCoords(data, config) {
 
       // 3) Redraw full set for PCP
       updateParallelCoords(pcCurrentData);
+
+      // 4) Hide comparison panel, if open
+      hidePcDetailPanel();
     });
   }
 
@@ -270,6 +300,145 @@ function updateParallelCoords(data) {
     .selectAll(".pc-line")
     .data(sampled, (d, i) => d.__pc_id || (d.__pc_id = i + Math.random()));
 
+  // ---- Helpers for comparison panel ----
+  function formatVal(v, decimals = 1) {
+    if (v == null || isNaN(v)) return "NA";
+    const num = +v;
+    return num.toFixed(decimals);
+  }
+
+  function buildComparisonPanel(event, d) {
+    const panel = ensurePcDetailPanel();
+
+    // Compute diabetic / non-diabetic means in the *current* subset
+    const diabs = pcCurrentData.filter((r) => r.diabetes === 1);
+    const nondiabs = pcCurrentData.filter((r) => r.diabetes === 0);
+
+    const metricDefs = [
+      { key: "age", label: "Age", decimals: 0, unit: "yrs" },
+      { key: "bmi", label: "BMI", decimals: 1, unit: "" },
+      { key: "hbA1c_level", label: "HbA1c", decimals: 2, unit: "" },
+      {
+        key: "blood_glucose_level",
+        label: "Glucose",
+        decimals: 0,
+        unit: "mg/dL"
+      }
+    ];
+
+    const means = {
+      diabetic: {},
+      non: {}
+    };
+
+    metricDefs.forEach((m) => {
+      means.diabetic[m.key] = diabs.length
+        ? d3.mean(diabs, (r) => +r[m.key])
+        : null;
+      means.non[m.key] = nondiabs.length
+        ? d3.mean(nondiabs, (r) => +r[m.key])
+        : null;
+    });
+
+    const isDiab = d.diabetes === 1;
+    const baseGroup = isDiab ? "diabetic" : "non";
+    const baseLabel = isDiab ? "diabetic" : "non-diabetic";
+
+    const metricRows = metricDefs
+      .map((m) => {
+        const val = d[m.key];
+        const valStr = formatVal(val, m.decimals);
+        const ref = means[baseGroup][m.key];
+        const refStr = formatVal(ref, m.decimals);
+        const unit = m.unit ? ` ${m.unit}` : "";
+
+        // Special handling for AGE: no % badge, just value + avg
+        if (m.key === "age") {
+          return `
+            <div class="pc-detail-metric-row">
+              <div class="pc-detail-metric-name">${m.label}</div>
+              <div class="pc-detail-metric-values">
+                <span class="pc-detail-value">${valStr}${unit}</span>
+                <span class="pc-detail-avg"> | ${baseLabel} avg ${refStr}${unit}</span>
+              </div>
+            </div>
+          `;
+        }
+
+        // For all other metrics, keep the % badge logic
+        let badgeText = "≈ group avg";
+        let badgeClass = "neutral";
+
+        if (
+          ref != null &&
+          !isNaN(ref) &&
+          val != null &&
+          !isNaN(val) &&
+          ref !== 0
+        ) {
+          const pct = ((val - ref) / ref) * 100;
+          const absPct = Math.abs(pct).toFixed(0);
+
+          if (pct > 5) {
+            badgeText = `↑ ${absPct}%`;
+            badgeClass = "up";
+          } else if (pct < -5) {
+            badgeText = `↓ ${absPct}%`;
+            badgeClass = "down";
+          } else {
+            badgeText = "≈ group avg";
+            badgeClass = "neutral";
+          }
+        }
+
+        return `
+          <div class="pc-detail-metric-row">
+            <div class="pc-detail-metric-name">${m.label}</div>
+            <div class="pc-detail-metric-values">
+              <span class="pc-detail-value">${valStr}${unit}</span>
+              <span class="pc-detail-avg"> | ${baseLabel} avg ${refStr}${unit}</span>
+              <span class="pc-detail-badge ${badgeClass}">${badgeText}</span>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    const diagLabel = isDiab ? "Diabetic" : "Non-diabetic";
+
+    panel.innerHTML = `
+      <div class="pc-detail-header">
+        <div>
+          <div class="pc-detail-title">${d.gender || "Patient"}, age ${
+      d.age ?? "NA"
+    }</div>
+          <div class="pc-detail-subtitle">
+            ${diagLabel}${d.location ? ` • State: ${d.location}` : ""}
+          </div>
+        </div>
+        <button type="button" class="pc-detail-close" aria-label="Close">×</button>
+      </div>
+      <div class="pc-detail-body">
+        ${metricRows}
+      </div>
+    `;
+
+    const closeBtn = panel.querySelector(".pc-detail-close");
+    if (closeBtn) {
+      closeBtn.onclick = () => {
+        hidePcDetailPanel();
+      };
+    }
+
+    // Position near click point
+    const pageX = event.pageX;
+    const pageY = event.pageY;
+
+    panel.style.left = pageX + 12 + "px";
+    panel.style.top = pageY + 12 + "px";
+    panel.style.display = "block";
+  }
+
   // Only an enter selection is needed because we removed old paths
   lines
     .enter()
@@ -278,23 +447,26 @@ function updateParallelCoords(data) {
     .attr("stroke", (d) => (d.diabetes === 1 ? "#e74c3c" : "#2ecc71"))
     .attr("fill", "none")
     .attr("opacity", 0.05)
-    .on("mouseover", function (event, d) {
-      d3.select(this).attr("opacity", 0.7).raise();
-      if (pcConfig?.showTooltip) {
-        const html = `
-          <strong>${d.gender}, age ${d.age}</strong><br/>
-          State: ${d.location}<br/>
-          Diabetes: ${d.diabetes === 1 ? "Yes" : "No"}<br/>
-          BMI: ${d.bmi}<br/>
-          HbA1c: ${d.hbA1c_level}<br/>
-          Glucose: ${d.blood_glucose_level}
-        `;
-        pcConfig.showTooltip(html, event);
-      }
+    .attr("stroke-width", 0.4)
+    // SIMPLE VISUAL HOVER (no tooltip)
+    .on("mouseover", function () {
+      d3.select(this)
+        .attr("opacity", 0.9)
+        .attr("stroke-width", 1.1)
+        .raise();
     })
     .on("mouseout", function () {
-      d3.select(this).attr("opacity", 0.05);
+      d3.select(this)
+        .attr("opacity", 0.05)
+        .attr("stroke-width", 0.4);
+    })
+    .on("click", function (event, d) {
+      // Don’t let this bubble up to the panel reset on container
+      event.stopPropagation();
+      // If a shared tooltip exists, hide it to avoid clutter
       pcConfig?.hideTooltip && pcConfig.hideTooltip();
+      // Show comparison panel
+      buildComparisonPanel(event, d);
     })
     .attr("d", (d) => pcPathForRow(d));
 }

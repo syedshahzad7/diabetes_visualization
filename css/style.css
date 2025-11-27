@@ -315,3 +315,107 @@ svg {
 .gender-bar.female {
   fill: #f28eae;
 }
+
+.pc-detail-panel {
+  position: absolute;
+  z-index: 999;
+  max-width: 260px;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.18);
+  padding: 0.5rem 0.65rem 0.55rem;
+  font-size: 0.75rem;
+}
+
+.pc-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.pc-detail-title {
+  font-weight: 600;
+  margin-bottom: 0.05rem;
+}
+
+.pc-detail-subtitle {
+  font-size: 0.7rem;
+  color: #6b7280;
+}
+
+.pc-detail-close {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0.1rem 0.25rem;
+  border-radius: 999px;
+  color: #6b7280;
+}
+
+.pc-detail-close:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.pc-detail-body {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 0.3rem;
+  margin-top: 0.1rem;
+}
+
+.pc-detail-metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
+}
+
+.pc-detail-metric-name {
+  font-weight: 500;
+  color: #374151;
+}
+
+.pc-detail-metric-values {
+  text-align: right;
+  font-size: 0.7rem;
+  color: #4b5563;
+}
+
+.pc-detail-value {
+  font-weight: 600;
+  color: #111827;
+}
+
+.pc-detail-avg {
+  margin-left: 0.2rem;
+}
+
+.pc-detail-badge {
+  display: inline-block;
+  margin-left: 0.25rem;
+  padding: 0.05rem 0.25rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+.pc-detail-badge.up {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.pc-detail-badge.down {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.pc-detail-badge.neutral {
+  background: #e5e7eb;
+  color: #374151;
+}
