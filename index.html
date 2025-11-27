@@ -51,7 +51,7 @@
         </div>
       </div>
 
-      <!-- Row 2: left = map, right = three small charts -->
+      <!-- Row 2: left = map, right = two small charts -->
       <div id="map-container" class="panel">
         <h2 class="panel-title">Diabetes Prevalence by State</h2>
         <svg id="map"></svg>
@@ -62,11 +62,7 @@
       </div>
 
       <div id="small-multiples">
-        <div id="race-container" class="panel small-panel">
-          <h3 class="panel-title">Diabetes by Race</h3>
-          <svg id="raceRadial"></svg>
-        </div>
-
+        <!-- Smoking card now occupies the entire left side -->
         <div id="smoking-container" class="panel small-panel">
           <h3 class="panel-title">
             Smoking History<br />Composition
@@ -98,7 +94,7 @@
     <!-- scripts: viz modules first, main last -->
     <script src="js/parallel.js"></script>
     <script src="js/map.js"></script>
-    <script src="js/raceRadial.js"></script>
+    <!-- raceRadial.js removed, since the card is gone -->
     <script src="js/smokingRadar.js"></script>
     <script src="js/genderCards.js"></script>
     <script src="js/main.js"></script>

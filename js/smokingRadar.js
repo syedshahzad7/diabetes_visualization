@@ -24,6 +24,32 @@ function createSmokingRadar(data, categories, config) {
     .domain(smokingCats)
     .range([0, 2 * Math.PI]);
 
+  // Click on empty space in the smoking card to CLEAR the smoking filter
+  const container = document.getElementById("smoking-container");
+  if (container) {
+    container.addEventListener("click", (event) => {
+      const target = event.target;
+
+      // Only treat clicks on "blank" areas as reset:
+      const resetAllowed =
+        target.id === "smoking-container" ||
+        target.id === "smokingRadar" ||
+        target.classList.contains("panel-caption");
+
+      if (!resetAllowed) return;
+
+      // If a smoking filter is active, toggle it off using the same helper
+      if (
+        typeof filters !== "undefined" &&
+        filters.smoking != null &&
+        typeof toggleFilter === "function"
+      ) {
+        // Passing the current value toggles it back to null
+        toggleFilter("smoking", filters.smoking);
+      }
+    });
+  }
+
   updateSmokingRadar(data);
 }
 
@@ -35,6 +61,7 @@ function updateSmokingRadar(data) {
 
   const totalD = diabetics.length || 1;
   const totalN = nonDiabetics.length || 1;
+  const totalAll = data.length || 1;
 
   const redVals = smokingCats.map((c) => {
     const n = diabetics.filter((d) => d.smoking_history === c).length;
@@ -46,12 +73,25 @@ function updateSmokingRadar(data) {
     return n / totalN;
   });
 
-  const maxVal = Math.max(0.001, d3.max([...redVals, ...greenVals]));
+  // Combined distribution (all patients in current filtered dataset)
+  const combinedVals = smokingCats.map((c) => {
+    const n = data.filter((d) => d.smoking_history === c).length;
+    return n / totalAll;
+  });
+
+  const maxVal = Math.max(
+    0.001,
+    d3.max([...redVals, ...greenVals, ...combinedVals])
+  );
 
   radarRadiusScale = d3
     .scaleLinear()
     .domain([0, maxVal])
     .range([0, radarRadius]);
+
+  // Is a smoking-category filter currently active?
+  const smokingFilterActive =
+    typeof filters !== "undefined" && filters.smoking != null;
 
   // Background grid circles (25, 50, 75, 100% of max)
   const levels = [0.25, 0.5, 0.75, 1.0];
@@ -84,6 +124,8 @@ function updateSmokingRadar(data) {
           .append("g")
           .attr("class", "radar-axis")
           .on("click", (event, category) => {
+            // Prevent card-level click handler from firing
+            event.stopPropagation();
             smokingRadarConfig?.onAxisClick &&
               smokingRadarConfig.onAxisClick(category);
           }),
@@ -114,7 +156,8 @@ function updateSmokingRadar(data) {
     const xLabel = Math.cos(angle - Math.PI / 2) * labelRadius;
     const yLabel = Math.sin(angle - Math.PI / 2) * labelRadius;
 
-    const labelText = g.selectAll("text.radar-category-label")
+    const labelText = g
+      .selectAll("text.radar-category-label")
       .data([category])
       .join("text")
       .attr("class", "radar-category-label")
@@ -150,54 +193,68 @@ function updateSmokingRadar(data) {
     });
   }
 
-  const redPoints = makePoints(redVals);
-  const greenPoints = makePoints(greenVals);
+  // Decide which polygons to draw:
+  //  - No smoking filter: diabetic (red) + non-diabetic (green)
+  //  - Smoking filter active: single neutral dark outline
+  let polygonDefs;
+  if (smokingFilterActive) {
+    const combinedPoints = makePoints(combinedVals);
+    polygonDefs = [
+      {
+        id: "combined",
+        color: "#111",
+        points: combinedPoints,
+        label: "Patients"
+      }
+    ];
+  } else {
+    const redPoints = makePoints(redVals);
+    const greenPoints = makePoints(greenVals);
+    polygonDefs = [
+      {
+        id: "diab",
+        color: "#e74c3c",
+        points: redPoints,
+        label: "Diabetic"
+      },
+      {
+        id: "nod",
+        color: "#2ecc71",
+        points: greenPoints,
+        label: "Non-diabetic"
+      }
+    ];
+  }
 
   const polygons = smokingRadarSvg
     .selectAll("path.radar-poly")
-    .data(
-      [
-        { id: "diab", color: "#e74c3c", points: redPoints },
-        { id: "nod", color: "#2ecc71", points: greenPoints }
-      ],
-      (d) => d.id
-    );
+    .data(polygonDefs, (d) => d.id);
 
   polygons
     .join(
       (enter) =>
         enter
           .append("path")
-          .attr("class", "radar-poly")
-          .attr("fill-opacity", 0.2)
-          .attr("stroke-width", 1.2),
+          .attr("class", "radar-poly"),
       (update) => update,
       (exit) => exit.remove()
     )
-    .attr("fill", (d) => d.color)
-    .attr("stroke", (d) => d.color)
+    .attr("fill", (d) => (smokingFilterActive ? "none" : d.color))
+    .attr("fill-opacity", smokingFilterActive ? 0 : 0.2)
+    .attr("stroke", (d) => (smokingFilterActive ? "#111" : d.color))
+    .attr("stroke-width", smokingFilterActive ? 2 : 1.2)
     .attr("d", (d) => lineRadial(d.points));
 
   // Small circles at vertices
   const vertexGroups = smokingRadarSvg
     .selectAll("g.radar-vertices")
-    .data(
-      [
-        { id: "diab", color: "#e74c3c", points: redPoints, label: "Diabetic" },
-        {
-          id: "nod",
-          color: "#2ecc71",
-          points: greenPoints,
-          label: "Non-diabetic"
-        }
-      ],
-      (d) => d.id
-    );
+    .data(polygonDefs, (d) => d.id);
 
   vertexGroups
     .join(
       (enter) => enter.append("g").attr("class", "radar-vertices"),
-      (update) => update
+      (update) => update,
+      (exit) => exit.remove()
     )
     .each(function (group) {
       const circles = d3
@@ -208,25 +265,23 @@ function updateSmokingRadar(data) {
       circles
         .join(
           (enter) =>
-            enter
-              .append("circle")
-              .attr("r", 2.8)
-              .attr("fill", group.color)
-              .on("mousemove", (event, p) => {
-                const html = `<strong>${group.label}</strong><br/>${p.category}: ${(p.value * 100).toFixed(
-                  1
-                )}%`;
-                smokingRadarConfig?.showTooltip &&
-                  smokingRadarConfig.showTooltip(html, event);
-              })
-              .on("mouseout", () => {
-                smokingRadarConfig?.hideTooltip &&
-                  smokingRadarConfig.hideTooltip();
-              }),
+            enter.append("circle").attr("r", 2.8),
           (update) => update,
           (exit) => exit.remove()
         )
+        .attr("fill", () => (smokingFilterActive ? "#111" : group.color))
         .attr("cx", (p) => Math.cos(p.angle - Math.PI / 2) * p.radius)
-        .attr("cy", (p) => Math.sin(p.angle - Math.PI / 2) * p.radius);
+        .attr("cy", (p) => Math.sin(p.angle - Math.PI / 2) * p.radius)
+        .on("mousemove", (event, p) => {
+          const html = `<strong>${group.label}</strong><br/>${
+            p.category
+          }: ${(p.value * 100).toFixed(1)}%`;
+          smokingRadarConfig?.showTooltip &&
+            smokingRadarConfig.showTooltip(html, event);
+        })
+        .on("mouseout", () => {
+          smokingRadarConfig?.hideTooltip &&
+            smokingRadarConfig.hideTooltip();
+        });
     });
 }

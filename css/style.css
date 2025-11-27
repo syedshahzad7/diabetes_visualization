@@ -110,23 +110,14 @@ body {
   grid-area: map;
 }
 
+/* Small-multiples area: now just Smoking (left) and Gender (right) */
 #small-multiples {
   grid-area: small;
   display: grid;
-  grid-template-rows: 1fr 1fr;
-  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-rows: 1fr;            /* single row */
+  grid-template-columns: 1.1fr 0.9fr; /* left bigger for radar */
   gap: 0.4rem;
-  /* layout:
-     [race][gender]
-     [smoking][gender] (gender spans rows)
-  */
-  grid-template-areas:
-    "race gender"
-    "smoking gender";
-}
-
-#race-container {
-  grid-area: race;
+  grid-template-areas: "smoking gender";
 }
 
 #smoking-container {
@@ -268,7 +259,7 @@ svg {
   stroke-width: 1.2;
 }
 
-/* Radial bars */
+/* Radial bars (if ever reused) */
 .radial-arc {
   cursor: pointer;
 }

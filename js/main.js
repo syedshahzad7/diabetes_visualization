@@ -3,14 +3,12 @@
 // Global filters that other views set
 const filters = {
   state: null,
-  raceKey: null, // e.g. "race:Asian"
   smoking: null,
   gender: null
 };
 
 let fullData = [];
 let smokingCategories = [];
-let raceColumns = null;
 let usGeo = null;
 
 // Shared tooltip
@@ -52,16 +50,11 @@ function applyFilters() {
     if (filters.state && d.location !== filters.state) return false;
     if (filters.gender && d.gender !== filters.gender) return false;
     if (filters.smoking && d.smoking_history !== filters.smoking) return false;
-
-    if (filters.raceKey) {
-      if (+d[filters.raceKey] !== 1) return false;
-    }
     return true;
   });
 
   updateParallelCoords(filtered);
   updateMap(filtered);
-  updateRaceRadial(filtered);
   updateSmokingRadar(filtered);
   updateGenderCards(filtered);
 
@@ -93,8 +86,6 @@ Promise.all([
   const targetDiab = Math.min(diabetics.length, 8500);
   const targetNonDiab = Math.min(nonDiabetics.length, targetDiab);
 
-  // (Optional) if diabetics > target, you could also sample diabetics;
-  // here we keep all diabetics if <= 8500, which matches your dataset.
   const keptDiabetics = diabetics.slice(0, targetDiab);
 
   // Deterministically sample non-diabetic records
@@ -120,15 +111,6 @@ Promise.all([
     fullData.filter((d) => d.diabetes === 0).length
   );
 
-  // Define which columns encode race in your CSV
-  raceColumns = [
-    { key: "race:AfricanAmerican", label: "African American" },
-    { key: "race:Asian", label: "Asian" },
-    { key: "race:Caucasian", label: "Caucasian" },
-    { key: "race:Hispanic", label: "Hispanic" },
-    { key: "race:Other", label: "Other" }
-  ];
-
   // Smoking categories present in *balanced* data
   smokingCategories = Array.from(
     new Set(fullData.map((d) => d.smoking_history))
@@ -148,12 +130,6 @@ Promise.all([
     showTooltip,
     hideTooltip,
     onStateClick: (stateName) => toggleFilter("state", stateName)
-  });
-
-  createRaceRadial(fullData, raceColumns, {
-    showTooltip,
-    hideTooltip,
-    onRaceClick: (raceKey) => toggleFilter("raceKey", raceKey)
   });
 
   createSmokingRadar(fullData, smokingCategories, {
