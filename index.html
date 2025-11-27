@@ -62,12 +62,15 @@
       </div>
 
       <div id="small-multiples">
-        <!-- Smoking card now occupies the entire left side -->
+        <!-- Smoking card: radar + clickable labels -->
         <div id="smoking-container" class="panel small-panel">
           <h3 class="panel-title">
             Smoking History<br />Composition
           </h3>
           <svg id="smokingRadar"></svg>
+          <div class="panel-caption">
+            Click a smoking label on the chart to filter all views. 
+          </div>
         </div>
 
         <div id="gender-container" class="panel small-panel">
@@ -94,7 +97,6 @@
     <!-- scripts: viz modules first, main last -->
     <script src="js/parallel.js"></script>
     <script src="js/map.js"></script>
-    <!-- raceRadial.js removed, since the card is gone -->
     <script src="js/smokingRadar.js"></script>
     <script src="js/genderCards.js"></script>
     <script src="js/main.js"></script>

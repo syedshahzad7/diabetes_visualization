@@ -12,12 +12,13 @@ function createSmokingRadar(data, categories, config) {
   const height = svg.node().clientHeight || 260;
   svg.attr("viewBox", [0, 0, width, height]);
 
+  // Slightly shift upward to make room for caption under the chart
   smokingRadarSvg = svg
     .append("g")
-    .attr("transform", `translate(${width / 2},${height / 2})`);
+    .attr("transform", `translate(${width / 2},${height / 2 - 6})`);
 
-  // Use most of the panel (slight margin)
-  radarRadius = Math.min(width, height) / 2 - 5;
+  // Slightly smaller radius so labels + caption fit nicely
+  radarRadius = Math.min(width, height) / 2 - 18;
 
   radarAngleScale = d3
     .scaleBand()
@@ -26,11 +27,13 @@ function createSmokingRadar(data, categories, config) {
 
   // Click on empty space in the smoking card to CLEAR the smoking filter
   const container = document.getElementById("smoking-container");
-  if (container) {
+  if (container && !container._smokingClearHandlerAttached) {
+    container._smokingClearHandlerAttached = true;
+
     container.addEventListener("click", (event) => {
       const target = event.target;
 
-      // Only treat clicks on "blank" areas as reset:
+      // Only treat clicks on "blank" areas or caption as reset:
       const resetAllowed =
         target.id === "smoking-container" ||
         target.id === "smokingRadar" ||
@@ -38,7 +41,6 @@ function createSmokingRadar(data, categories, config) {
 
       if (!resetAllowed) return;
 
-      // If a smoking filter is active, toggle it off using the same helper
       if (
         typeof filters !== "undefined" &&
         filters.smoking != null &&
@@ -89,9 +91,10 @@ function updateSmokingRadar(data) {
     .domain([0, maxVal])
     .range([0, radarRadius]);
 
-  // Is a smoking-category filter currently active?
-  const smokingFilterActive =
-    typeof filters !== "undefined" && filters.smoking != null;
+  // Current smoking-category filter (if any)
+  const currentSmoking =
+    typeof filters !== "undefined" ? filters.smoking : null;
+  const smokingFilterActive = currentSmoking != null;
 
   // Background grid circles (25, 50, 75, 100% of max)
   const levels = [0.25, 0.5, 0.75, 1.0];
@@ -112,19 +115,19 @@ function updateSmokingRadar(data) {
     )
     .attr("r", (d) => radarRadiusScale(maxVal * d));
 
-  // Axes
+  // Axes + clickable label-buttons
   const axes = smokingRadarSvg
     .selectAll("g.radar-axis")
     .data(smokingCats, (d) => d);
 
-  const axesEnter = axes
+  const axesMerged = axes
     .join(
       (enter) =>
         enter
           .append("g")
           .attr("class", "radar-axis")
           .on("click", (event, category) => {
-            // Prevent card-level click handler from firing
+            // Clicking label/axis toggles smoking filter
             event.stopPropagation();
             smokingRadarConfig?.onAxisClick &&
               smokingRadarConfig.onAxisClick(category);
@@ -133,7 +136,7 @@ function updateSmokingRadar(data) {
       (exit) => exit.remove()
     );
 
-  axesEnter.each(function (category) {
+  axesMerged.each(function (category) {
     const angle =
       radarAngleScale(category) + radarAngleScale.bandwidth() / 2;
 
@@ -142,6 +145,7 @@ function updateSmokingRadar(data) {
 
     const g = d3.select(this);
 
+    // Axis line
     g.selectAll("line.radar-axis-line")
       .data([category])
       .join("line")
@@ -151,7 +155,7 @@ function updateSmokingRadar(data) {
       .attr("x2", xAxis)
       .attr("y2", yAxis);
 
-    // Slightly pull labels inward (1.08) so top ones aren't clipped
+    // Label position (a bit outside the circle)
     const labelRadius = radarRadius * 1.08;
     const xLabel = Math.cos(angle - Math.PI / 2) * labelRadius;
     const yLabel = Math.sin(angle - Math.PI / 2) * labelRadius;
@@ -166,13 +170,38 @@ function updateSmokingRadar(data) {
       .attr("alignment-baseline", "middle")
       .text(category);
 
-    // Special adjustment for 'never' label to move it left
+    // Slight tweak for 'never' so it doesn't clip left edge
     if (category === "never") {
       labelText.attr("text-anchor", "end").attr("dx", -8);
     } else {
       labelText.attr("text-anchor", "middle");
     }
+
+    // Add/Update a rounded rect behind label as a "button"
+    const bb = labelText.node().getBBox();
+
+    g.selectAll("rect.label-pill")
+      .data([category])
+      .join(
+        (enter) =>
+          enter
+            .insert("rect", "text") // insert behind the text
+            .attr("class", "label-pill"),
+        (update) => update
+      )
+      .attr("x", bb.x - 6)
+      .attr("y", bb.y - 4)
+      .attr("width", bb.width + 12)
+      .attr("height", bb.height + 8)
+      .attr("rx", 10)
+      .attr("ry", 10);
   });
+
+  // Mark active axis (for styling in CSS)
+  axesMerged.classed(
+    "active-smoking-axis",
+    (d) => d === currentSmoking
+  );
 
   const lineRadial = d3
     .lineRadial()
@@ -193,7 +222,7 @@ function updateSmokingRadar(data) {
     });
   }
 
-  // Decide which polygons to draw:
+  // Decide polygons:
   //  - No smoking filter: diabetic (red) + non-diabetic (green)
   //  - Smoking filter active: single neutral dark outline
   let polygonDefs;
