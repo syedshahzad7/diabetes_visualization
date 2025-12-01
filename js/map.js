@@ -98,19 +98,44 @@ function updateMap(data) {
     })
     .on("mousemove", (event, d) => {
       const s = byState.get(d.properties.NAME);
-      let html = `<strong>${d.properties.NAME}</strong><br/>`;
-      if (!s || s.total === 0) {
-        html += "No records in sample";
+
+      // Current state filter from global filters (defined in main.js)
+      const activeState =
+        typeof filters !== "undefined" ? filters.state : null;
+
+      let html = `<strong>${d.properties.NAME}</strong>`;
+
+      if (!activeState) {
+        // No state filter: original behavior
+        html += "<br/>";
+        if (!s || s.total === 0) {
+          html += "No records in sample";
+        } else {
+          html += `Diabetes prevalence: ${(s.rate * 100).toFixed(1)}%<br/>`;
+          html += `Mean HbA1c (diabetic): ${
+            s.meanHb ? s.meanHb.toFixed(2) : "NA"
+          }<br/>`;
+          html += `Mean BMI (diabetic): ${
+            s.meanBmi ? s.meanBmi.toFixed(1) : "NA"
+          }`;
+        }
       } else {
-        html += `Diabetes prevalence: ${(s.rate * 100).toFixed(1)}%<br/>`;
-        html += `Mean HbA1c (diabetic): ${
-          s.meanHb ? s.meanHb.toFixed(2) : "NA"
-        }<br/>`;
-        html += `Mean BMI (diabetic): ${
-          s.meanBmi ? s.meanBmi.toFixed(1) : "NA"
-        }`;
-        // N removed from tooltip
+        // A state is selected (dashboard filtered)
+        if (s && s.total > 0) {
+          // For the selected state, still show full stats
+          html += "<br/>";
+          html += `Diabetes prevalence: ${(s.rate * 100).toFixed(1)}%<br/>`;
+          html += `Mean HbA1c (diabetic): ${
+            s.meanHb ? s.meanHb.toFixed(2) : "NA"
+          }<br/>`;
+          html += `Mean BMI (diabetic): ${
+            s.meanBmi ? s.meanBmi.toFixed(1) : "NA"
+          }`;
+        }
+        // For other states with 0 total under the filter,
+        // we *only* show the state name (no "No records in sample")
       }
+
       mapConfig?.showTooltip && mapConfig.showTooltip(html, event);
     })
     .on("mouseout", () => {
