@@ -108,8 +108,8 @@ function updateMap(data) {
         }<br/>`;
         html += `Mean BMI (diabetic): ${
           s.meanBmi ? s.meanBmi.toFixed(1) : "NA"
-        }<br/>`;
-        html += `N = ${s.total}`;
+        }`;
+        // N removed from tooltip
       }
       mapConfig?.showTooltip && mapConfig.showTooltip(html, event);
     })
