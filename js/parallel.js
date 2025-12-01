@@ -16,6 +16,14 @@ let pcCurrentData = [];
 // null = show both; "diabetic" = only diabetic; "non-diabetic" = only non-diabetic
 let pcLegendFilter = null;
 
+// ---- Global style knobs for PCP lines ----
+let pcBaseOpacity = 0.05;        // default base opacity (will be updated dynamically)
+let pcBaseStrokeWidth = 0.4;     // default base stroke width (dynamic)
+const pcFadeOpacity = 0.02;      // opacity for non-hovered lines while hovering
+const pcFadeStrokeWidth = 0.2;   // stroke width for non-hovered lines
+const pcHoverOpacity = 1;        // hovered line opacity
+const pcHoverStrokeWidth = 2.4;  // hovered line stroke width
+
 // Floating comparison panel (HTML)
 let pcDetailPanel = null;
 
@@ -146,8 +154,8 @@ function createParallelCoords(data, config) {
       if (!selection) {
         // reset to base style when brush cleared
         allLines
-          .attr("opacity", 0.05)
-          .attr("stroke-width", 0.4);
+          .attr("opacity", pcBaseOpacity)
+          .attr("stroke-width", pcBaseStrokeWidth);
         return;
       }
       const [y0, y1] = selection;
@@ -292,6 +300,26 @@ function updateParallelCoords(data) {
     const bVal = b.diabetes || 0;
     return aVal - bVal;
   });
+
+  // ---- Dynamic base style depending on how many lines are shown ----
+  const n = sampled.length;
+  if (n > 12000) {
+    pcBaseOpacity = 0.03;
+    pcBaseStrokeWidth = 0.3;
+  } else if (n > 6000) {
+    pcBaseOpacity = 0.05;
+    pcBaseStrokeWidth = 0.4;
+  } else if (n > 3000) {
+    pcBaseOpacity = 0.08;
+    pcBaseStrokeWidth = 0.5;
+  } else if (n > 1000) {
+    pcBaseOpacity = 0.12;
+    pcBaseStrokeWidth = 0.7;
+  } else {
+    pcBaseOpacity = 0.2;
+    pcBaseStrokeWidth = 1.0;
+  }
+  // ---------------------------------------------
 
   // Clear existing lines so DOM order follows our sorted data
   pcLinesG.selectAll(".pc-line").remove();
@@ -446,19 +474,33 @@ function updateParallelCoords(data) {
     .attr("class", "pc-line")
     .attr("stroke", (d) => (d.diabetes === 1 ? "#e74c3c" : "#2ecc71"))
     .attr("fill", "none")
-    .attr("opacity", 0.05)
-    .attr("stroke-width", 0.4)
-    // SIMPLE VISUAL HOVER (no tooltip)
+    .attr("opacity", pcBaseOpacity)
+    .attr("stroke-width", pcBaseStrokeWidth)
+    // STRONGER VISUAL HOVER
     .on("mouseover", function () {
+      const thisNode = this;
+
+      // Fade all other lines
+      pcLinesG
+        .selectAll(".pc-line")
+        .filter(function () {
+          return this !== thisNode;
+        })
+        .attr("opacity", pcFadeOpacity)
+        .attr("stroke-width", pcFadeStrokeWidth);
+
+      // Emphasize hovered line
       d3.select(this)
-        .attr("opacity", 0.9)
-        .attr("stroke-width", 1.1)
+        .attr("opacity", pcHoverOpacity)
+        .attr("stroke-width", pcHoverStrokeWidth)
         .raise();
     })
     .on("mouseout", function () {
-      d3.select(this)
-        .attr("opacity", 0.05)
-        .attr("stroke-width", 0.4);
+      // Reset ALL lines back to *current* base style
+      pcLinesG
+        .selectAll(".pc-line")
+        .attr("opacity", pcBaseOpacity)
+        .attr("stroke-width", pcBaseStrokeWidth);
     })
     .on("click", function (event, d) {
       // Don’t let this bubble up to the panel reset on container
