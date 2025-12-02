@@ -9,6 +9,10 @@ body {
   padding: 0.5rem 1.5rem 1rem 1.5rem;
   background: #f7f7fb;
   color: #222;
+  overflow: hidden; /* Prevent scrolling */
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Top bar: title + meta info + reset button */
@@ -23,6 +27,7 @@ body {
   border-radius: 8px;
   padding: 0.4rem 0.8rem;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  flex-shrink: 0; /* Don't shrink */
 }
 
 #title {
@@ -49,6 +54,7 @@ body {
   font-size: 0.9rem;
   color: #555;
   margin-bottom: 0.5rem;
+  flex-shrink: 0;
 }
 
 /* Reset button styling */
@@ -77,16 +83,18 @@ body {
   box-shadow: 0 1px 3px rgba(37, 99, 235, 0.4);
 }
 
-/* Dashboard grid layout: 2 rows, 2 columns */
+/* Dashboard grid layout: 2 rows, 2 columns - NOW RESPONSIVE */
 #dashboard {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
-  grid-template-rows: 320px 320px;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.6rem 0.6rem;
   grid-template-areas:
     "parallel parallel"
     "map small";
-  height: calc(100vh - 80px);
+  flex: 1; /* Take remaining space */
+  min-height: 0; /* Important for grid to respect flex container */
+  overflow: hidden;
 }
 
 /* Panels */
@@ -99,6 +107,7 @@ body {
   flex-direction: column;
   overflow: hidden;
   border: 1px solid #dcdfe6;
+  min-height: 0; /* Important for flex children */
 }
 
 #parallel-container {
@@ -117,6 +126,7 @@ body {
   grid-template-columns: 1.1fr 0.9fr;
   gap: 0.4rem;
   grid-template-areas: "smoking gender";
+  min-height: 0;
 }
 
 #smoking-container {
@@ -138,23 +148,27 @@ body {
   font-size: 0.9rem;
   font-weight: 600;
   margin: 0 0 0.1rem;
+  flex-shrink: 0;
 }
 
 .panel-caption {
   font-size: 0.7rem;
   color: #666;
   margin-top: 0.15rem;
+  flex-shrink: 0;
 }
 
 /* SVGs take remaining space inside panel */
 svg {
   width: 100%;
   height: 100%;
+  min-height: 0; /* Important */
 }
 
 /* Make sure the radar SVG leaves room for caption */
 #smoking-container svg {
   flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* ========= Parallel coords legend ========= */
@@ -166,6 +180,7 @@ svg {
   align-items: center;
   margin-top: 0.15rem;
   margin-bottom: 0.15rem;
+  flex-shrink: 0;
 }
 
 .pc-legend-item {
@@ -236,10 +251,12 @@ svg {
   flex-direction: column;
   gap: 0.3rem;
   flex: 1;
+  min-height: 0;
 }
 
 .gender-card {
   flex: 1 1 0;
+  min-height: 0;
   border-radius: 6px;
   border: 1px solid #d2d6df;
   padding: 0.25rem 0.35rem;
@@ -251,6 +268,7 @@ svg {
 .gender-card svg {
   flex: 1;
   width: 100%;
+  min-height: 0;
 }
 
 .card-title,
@@ -258,6 +276,7 @@ svg {
   font-size: 0.75rem;
   font-weight: 600;
   margin-bottom: 0.15rem;
+  flex-shrink: 0;
 }
 
 /* Tooltip */
@@ -445,4 +464,26 @@ svg {
   stroke: #111827;
   stroke-width: 1.4;
   filter: brightness(1.12);
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-height: 800px) {
+  #title {
+    font-size: 1.4rem;
+  }
+  
+  .panel-title {
+    font-size: 0.85rem;
+  }
+  
+  body {
+    padding: 0.4rem 1rem;
+  }
+}
+
+/* Adjustments for larger screens */
+@media (min-height: 900px) {
+  #dashboard {
+    grid-template-rows: minmax(280px, 1fr) minmax(280px, 1fr);
+  }
 }
