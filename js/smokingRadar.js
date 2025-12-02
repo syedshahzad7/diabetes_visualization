@@ -170,9 +170,12 @@ function updateSmokingRadar(data) {
       .attr("alignment-baseline", "middle")
       .text(category);
 
-    // Slight tweak for 'never' so it doesn't clip left edge
+    // Adjust positioning for specific labels to prevent overlap
     if (category === "never") {
       labelText.attr("text-anchor", "end").attr("dx", -8);
+    } else if (category === "current") {
+      // Move 'current' label to the right
+      labelText.attr("text-anchor", "start").attr("dx", 8);
     } else {
       labelText.attr("text-anchor", "middle");
     }
