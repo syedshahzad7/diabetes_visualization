@@ -219,6 +219,17 @@ function createParallelCoords(data, config) {
       updateParallelCoords(pcCurrentData);
       refreshLegendStyles();
       hidePcDetailPanel();
+
+      // also clear PCP-driven highlights when toggling legend
+      if (typeof highlightMapStateFromPCP === "function") {
+        highlightMapStateFromPCP(null);
+      }
+      if (typeof highlightSmokingFromPCP === "function") {
+        highlightSmokingFromPCP(null);
+      }
+      if (typeof highlightGenderFromPCP === "function") {
+        highlightGenderFromPCP(null);
+      }
     });
   }
 
@@ -230,6 +241,17 @@ function createParallelCoords(data, config) {
       updateParallelCoords(pcCurrentData);
       refreshLegendStyles();
       hidePcDetailPanel();
+
+      // also clear PCP-driven highlights when toggling legend
+      if (typeof highlightMapStateFromPCP === "function") {
+        highlightMapStateFromPCP(null);
+      }
+      if (typeof highlightSmokingFromPCP === "function") {
+        highlightSmokingFromPCP(null);
+      }
+      if (typeof highlightGenderFromPCP === "function") {
+        highlightGenderFromPCP(null);
+      }
     });
   }
 
@@ -267,6 +289,17 @@ function createParallelCoords(data, config) {
 
       // 4) Hide comparison panel, if open
       hidePcDetailPanel();
+
+      // 5) Clear any PCP-driven highlights in other charts
+      if (typeof highlightMapStateFromPCP === "function") {
+        highlightMapStateFromPCP(null);
+      }
+      if (typeof highlightSmokingFromPCP === "function") {
+        highlightSmokingFromPCP(null);
+      }
+      if (typeof highlightGenderFromPCP === "function") {
+        highlightGenderFromPCP(null);
+      }
     });
   }
 
@@ -455,6 +488,17 @@ function updateParallelCoords(data) {
     if (closeBtn) {
       closeBtn.onclick = () => {
         hidePcDetailPanel();
+
+        // Clear any PCP-driven highlights in other charts when closing panel
+        if (typeof highlightMapStateFromPCP === "function") {
+          highlightMapStateFromPCP(null);
+        }
+        if (typeof highlightSmokingFromPCP === "function") {
+          highlightSmokingFromPCP(null);
+        }
+        if (typeof highlightGenderFromPCP === "function") {
+          highlightGenderFromPCP(null);
+        }
       };
     }
 
@@ -507,6 +551,18 @@ function updateParallelCoords(data) {
       event.stopPropagation();
       // If a shared tooltip exists, hide it to avoid clutter
       pcConfig?.hideTooltip && pcConfig.hideTooltip();
+
+      // NEW: cross-view highlights driven by PCP click (no filtering)
+      if (typeof highlightMapStateFromPCP === "function") {
+        highlightMapStateFromPCP(d.location || null);
+      }
+      if (typeof highlightSmokingFromPCP === "function") {
+        highlightSmokingFromPCP(d.smoking_history || null);
+      }
+      if (typeof highlightGenderFromPCP === "function") {
+        highlightGenderFromPCP(d.gender || null);
+      }
+
       // Show comparison panel
       buildComparisonPanel(event, d);
     })

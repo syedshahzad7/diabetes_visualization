@@ -419,3 +419,30 @@ svg {
   background: #e5e7eb;
   color: #374151;
 }
+
+
+/* Map PCP highlight */
+.state.pcp-highlight {
+  stroke: #111827;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 4px rgba(15, 23, 42, 0.45));
+}
+
+/* Smoking radar PCP highlight */
+.radar-axis.pcp-smoking-highlight .label-pill {
+  fill: #fef9c3;
+  stroke: #facc15;
+}
+
+.radar-axis.pcp-smoking-highlight .radar-category-label {
+  font-weight: 700;
+  fill: #92400e;
+}
+
+/* Gender bars PCP highlight */
+.heart-bar.pcp-gender-highlight,
+.hyper-bar.pcp-gender-highlight {
+  stroke: #111827;
+  stroke-width: 1.4;
+  filter: brightness(1.12);
+}

@@ -314,3 +314,14 @@ function updateSmokingRadar(data) {
         });
     });
 }
+
+/**
+ * Highlight a single smoking category from a PCP click.
+ * Passing null clears the highlight.
+ */
+function highlightSmokingFromPCP(category) {
+  if (!smokingRadarSvg) return;
+  smokingRadarSvg
+    .selectAll("g.radar-axis")
+    .classed("pcp-smoking-highlight", (d) => category && d === category);
+}

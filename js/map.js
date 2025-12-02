@@ -229,3 +229,17 @@ function updateMap(data) {
     .attr("font-size", 9)
     .text("Diabetes prevalence");
 }
+
+/**
+ * Highlight a single state in the map based on a PCP click.
+ * Passing null clears the highlight.
+ */
+function highlightMapStateFromPCP(stateName) {
+  if (!mapSvg) return;
+  mapSvg
+    .selectAll("path.state")
+    .classed(
+      "pcp-highlight",
+      (d) => stateName && d.properties.NAME === stateName
+    );
+}

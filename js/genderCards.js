@@ -249,3 +249,19 @@ function updateGenderCards(data) {
     .attr("y", (d) => y(d.hyperRate) - 4)
     .text((d) => `${(d.hyperRate * 100).toFixed(1)}%`);
 }
+
+/**
+ * Highlight gender bars from a PCP click.
+ * Passing null clears the highlight.
+ */
+function highlightGenderFromPCP(gender) {
+  if (!heartSvgGroup || !hyperSvgGroup) return;
+
+  heartSvgGroup
+    .selectAll("rect.heart-bar")
+    .classed("pcp-gender-highlight", (d) => gender && d.gender === gender);
+
+  hyperSvgGroup
+    .selectAll("rect.hyper-bar")
+    .classed("pcp-gender-highlight", (d) => gender && d.gender === gender);
+}
