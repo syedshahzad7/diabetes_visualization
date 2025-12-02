@@ -439,15 +439,16 @@ svg {
   color: #374151;
 }
 
+/* ===== PCP-driven highlights ===== */
 
-/* Map PCP highlight */
+/* Map PCP highlight – thick golden outline + glow */
 .state.pcp-highlight {
-  stroke: #111827;
-  stroke-width: 2;
-  filter: drop-shadow(0 0 4px rgba(15, 23, 42, 0.45));
+  stroke: #fbbf24; /* amber-400 */
+  stroke-width: 3;
+  filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.9));
 }
 
-/* Smoking radar PCP highlight */
+/* Smoking radar PCP highlight (unchanged) */
 .radar-axis.pcp-smoking-highlight .label-pill {
   fill: #fef9c3;
   stroke: #facc15;
@@ -458,12 +459,12 @@ svg {
   fill: #92400e;
 }
 
-/* Gender bars PCP highlight */
+/* Gender bars PCP highlight – thick golden border + slight glow */
 .heart-bar.pcp-gender-highlight,
 .hyper-bar.pcp-gender-highlight {
-  stroke: #111827;
-  stroke-width: 1.4;
-  filter: brightness(1.12);
+  stroke: #fbbf24;
+  stroke-width: 3;
+  filter: brightness(1.12) drop-shadow(0 0 3px rgba(251, 191, 36, 0.85));
 }
 
 /* Responsive adjustments for smaller screens */
@@ -471,11 +472,11 @@ svg {
   #title {
     font-size: 1.4rem;
   }
-  
+
   .panel-title {
     font-size: 0.85rem;
   }
-  
+
   body {
     padding: 0.4rem 1rem;
   }
