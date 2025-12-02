@@ -17,8 +17,8 @@ function createSmokingRadar(data, categories, config) {
     .append("g")
     .attr("transform", `translate(${width / 2},${height / 2 - 6})`);
 
-  // Slightly smaller radius so labels + caption fit nicely
-  radarRadius = Math.min(width, height) / 2 - 18;
+  // Increase padding to ensure labels don't get cropped
+  radarRadius = Math.min(width, height) / 2 - 35;
 
   radarAngleScale = d3
     .scaleBand()
