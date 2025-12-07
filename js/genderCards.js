@@ -3,6 +3,10 @@
 let genderCardsConfig;
 let heartSvgGroup, hyperSvgGroup;
 
+// Cache last known stats for each gender so we can keep context bars visible
+// even when the global gender filter reduces the dataset to one gender.
+let lastGenderStatsCache = new Map(); // key: "Male"/"Female" -> stats object
+
 function createGenderCards(data, config) {
   genderCardsConfig = config;
 
@@ -41,7 +45,7 @@ function updateGenderCards(data) {
 
   const { innerW, innerH } = genderCardsConfig._layout;
 
-  // Aggregate by gender
+  // Aggregate by gender from CURRENT incoming data (which may be filtered)
   const byGender = d3.rollup(
     data,
     (rows) => {
@@ -60,20 +64,52 @@ function updateGenderCards(data) {
     (d) => d.gender
   );
 
-  // Keep only Male / Female (drop "Other" and anything else)
-  const genders = Array.from(byGender.keys())
-    .filter((g) => g === "Male" || g === "Female")
-    .sort();
+  // We ALWAYS want both bars present for context
+  const genders = ["Female", "Male"];
 
-  const heartStats = genders.map((g) => ({
-    gender: g,
-    ...byGender.get(g)
-  }));
-  const hyperStats = heartStats; // same objects, different field when reading
+  // If both genders exist in this incoming dataset, refresh cache
+  const hasFemale = byGender.has("Female");
+  const hasMale = byGender.has("Male");
+
+  if (hasFemale && hasMale) {
+    genders.forEach((g) => {
+      const s = byGender.get(g);
+      if (s) lastGenderStatsCache.set(g, { gender: g, ...s });
+    });
+  } else {
+    // If only one gender is present, still update cache for that one
+    genders.forEach((g) => {
+      const s = byGender.get(g);
+      if (s) lastGenderStatsCache.set(g, { gender: g, ...s });
+    });
+  }
+
+  // Build display stats:
+  // use current stats when available; otherwise fallback to cached stats;
+  // otherwise show a graceful zero object.
+  function getStat(g) {
+    const cur = byGender.get(g);
+    if (cur) return { gender: g, ...cur };
+
+    const cached = lastGenderStatsCache.get(g);
+    if (cached) return cached;
+
+    return {
+      gender: g,
+      total: 0,
+      heartCount: 0,
+      hyperCount: 0,
+      heartRate: 0,
+      hyperRate: 0
+    };
+  }
+
+  const heartStats = genders.map(getStat);
+  const hyperStats = heartStats;
 
   const maxHeart = d3.max(heartStats, (d) => d.heartRate) || 0.01;
   const maxHyper = d3.max(hyperStats, (d) => d.hyperRate) || 0.01;
-  const maxRate = Math.max(maxHeart, maxHyper);
+  const maxRate = Math.max(maxHeart, maxHyper) || 0.01;
 
   const x = d3
     .scaleBand()
@@ -90,8 +126,12 @@ function updateGenderCards(data) {
   const color = (g) =>
     g === "Male" ? "#4C78A8" : g === "Female" ? "#F28EBC" : "#999";
 
+  // Read current active gender filter (if any) from global filters
+  const activeGender =
+    typeof filters !== "undefined" ? filters.gender : null;
+
   // ----- Heart Disease chart -----
-  heartSvgGroup.selectAll("*").remove(); // clear before redraw
+  heartSvgGroup.selectAll("*").remove();
 
   heartSvgGroup
     .append("g")
@@ -123,11 +163,12 @@ function updateGenderCards(data) {
           .attr("class", "heart-bar")
           .attr("x", (d) => x(d.gender))
           .attr("width", x.bandwidth())
-          .attr("y", innerH) // animate from bottom
+          .attr("y", innerH)
           .attr("height", 0)
           .attr("fill", (d) => color(d.gender))
           .attr("cursor", "pointer")
           .on("click", (event, d) => {
+            event.stopPropagation();
             genderCardsConfig?.onGenderClick &&
               genderCardsConfig.onGenderClick(d.gender);
           })
@@ -147,6 +188,7 @@ function updateGenderCards(data) {
       (update) => update,
       (exit) => exit.remove()
     )
+    .classed("pcp-gender-highlight", (d) => activeGender && d.gender === activeGender)
     .transition()
     .duration(600)
     .attr("y", (d) => y(d.heartRate))
@@ -208,6 +250,7 @@ function updateGenderCards(data) {
           .attr("fill", (d) => color(d.gender))
           .attr("cursor", "pointer")
           .on("click", (event, d) => {
+            event.stopPropagation();
             genderCardsConfig?.onGenderClick &&
               genderCardsConfig.onGenderClick(d.gender);
           })
@@ -227,6 +270,7 @@ function updateGenderCards(data) {
       (update) => update,
       (exit) => exit.remove()
     )
+    .classed("pcp-gender-highlight", (d) => activeGender && d.gender === activeGender)
     .transition()
     .duration(600)
     .attr("y", (d) => y(d.hyperRate))
@@ -253,6 +297,9 @@ function updateGenderCards(data) {
 /**
  * Highlight gender bars from a PCP click.
  * Passing null clears the highlight.
+ *
+ * We keep this function so PCP-driven highlighting still works.
+ * It uses the same class as the gender filter highlight for consistency.
  */
 function highlightGenderFromPCP(gender) {
   if (!heartSvgGroup || !hyperSvgGroup) return;
