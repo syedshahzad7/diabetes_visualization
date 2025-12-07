@@ -24,6 +24,10 @@ const pcFadeStrokeWidth = 0.2;   // stroke width for non-hovered lines
 const pcHoverOpacity = 1;        // hovered line opacity
 const pcHoverStrokeWidth = 2.4;  // hovered line stroke width
 
+// ---- NEW: Track brush state across axes ----
+let pcActiveBrushSelections = {}; // { dimKey: [y0,y1] | null }
+let pcBrushActive = false;
+
 // Floating comparison panel (HTML)
 let pcDetailPanel = null;
 
@@ -43,6 +47,50 @@ function hidePcDetailPanel() {
   if (pcDetailPanel) {
     pcDetailPanel.style.display = "none";
   }
+}
+
+// ---- NEW: Helper that checks whether any brush is active ----
+function updateBrushActiveFlag() {
+  pcBrushActive = Object.values(pcActiveBrushSelections).some((s) => s != null);
+}
+
+// ---- NEW: Apply styling based on all active brushes ----
+// This keeps brush styling stable and avoids hover overwriting it.
+function applyActiveBrushStyling() {
+  const allLines = pcLinesG.selectAll(".pc-line");
+
+  updateBrushActiveFlag();
+
+  if (!pcBrushActive) {
+    // No active brushes => restore base style
+    allLines
+      .attr("opacity", pcBaseOpacity)
+      .attr("stroke-width", pcBaseStrokeWidth);
+    return;
+  }
+
+  // When brushes exist, a line must satisfy ALL active brush ranges
+  allLines.each(function (d) {
+    let keep = true;
+
+    for (const dim of pcDimensions) {
+      const sel = pcActiveBrushSelections[dim.key];
+      if (!sel) continue;
+
+      const val = +d[dim.key];
+      const y = pcYScales[dim.key](val);
+      const [y0, y1] = sel;
+
+      if (!(y >= y0 && y <= y1)) {
+        keep = false;
+        break;
+      }
+    }
+
+    d3.select(this)
+      .attr("opacity", keep ? 0.7 : 0.003)
+      .attr("stroke-width", keep ? 0.8 : 0.3);
+  });
 }
 
 function createParallelCoords(data, config) {
@@ -77,6 +125,11 @@ function createParallelCoords(data, config) {
     { key: "hbA1c_level", label: "HbA1c" },
     { key: "blood_glucose_level", label: "Blood Glucose" }
   ];
+
+  // Initialize brush tracking for each dimension
+  pcActiveBrushSelections = {};
+  pcDimensions.forEach((d) => (pcActiveBrushSelections[d.key] = null));
+  pcBrushActive = false;
 
   pcXScale = d3
     .scalePoint()
@@ -150,25 +203,11 @@ function createParallelCoords(data, config) {
     axisBrushes.push({ g, brush });
 
     function brushed({ selection }) {
-      const allLines = pcLinesG.selectAll(".pc-line");
-      if (!selection) {
-        // reset to base style when brush cleared
-        allLines
-          .attr("opacity", pcBaseOpacity)
-          .attr("stroke-width", pcBaseStrokeWidth);
-        return;
-      }
-      const [y0, y1] = selection;
-      const dimKey = dim.key;
-      allLines.each(function (d) {
-        const val = +d[dimKey];
-        const y = pcYScales[dimKey](val);
-        const highlight = y >= y0 && y <= y1;
-        // Stronger contrast: bright for selected, ultra-faint for others
-        d3.select(this)
-          .attr("opacity", highlight ? 0.7 : 0.003)
-          .attr("stroke-width", highlight ? 0.8 : 0.3);
-      });
+      // Track selection for this dimension
+      pcActiveBrushSelections[dim.key] = selection || null;
+
+      // Apply styling based on ALL active brushes
+      applyActiveBrushStyling();
     }
   });
 
@@ -212,15 +251,15 @@ function createParallelCoords(data, config) {
 
   if (diabeticSwatch) {
     diabeticSwatch.addEventListener("click", (event) => {
-      // don’t let this bubble to panel click handler
       event.stopPropagation();
       pcLegendFilter =
         pcLegendFilter === "diabetic" ? null : "diabetic";
+
       updateParallelCoords(pcCurrentData);
       refreshLegendStyles();
       hidePcDetailPanel();
 
-      // also clear PCP-driven highlights when toggling legend
+      // Clear PCP-driven highlights when toggling legend
       if (typeof highlightMapStateFromPCP === "function") {
         highlightMapStateFromPCP(null);
       }
@@ -230,6 +269,9 @@ function createParallelCoords(data, config) {
       if (typeof highlightGenderFromPCP === "function") {
         highlightGenderFromPCP(null);
       }
+
+      // Re-apply brush styling if any brush exists
+      applyActiveBrushStyling();
     });
   }
 
@@ -238,11 +280,12 @@ function createParallelCoords(data, config) {
       event.stopPropagation();
       pcLegendFilter =
         pcLegendFilter === "non-diabetic" ? null : "non-diabetic";
+
       updateParallelCoords(pcCurrentData);
       refreshLegendStyles();
       hidePcDetailPanel();
 
-      // also clear PCP-driven highlights when toggling legend
+      // Clear PCP-driven highlights when toggling legend
       if (typeof highlightMapStateFromPCP === "function") {
         highlightMapStateFromPCP(null);
       }
@@ -252,6 +295,9 @@ function createParallelCoords(data, config) {
       if (typeof highlightGenderFromPCP === "function") {
         highlightGenderFromPCP(null);
       }
+
+      // Re-apply brush styling if any brush exists
+      applyActiveBrushStyling();
     });
   }
 
@@ -264,10 +310,6 @@ function createParallelCoords(data, config) {
       // Ignore clicks that originated inside the legend
       if (target.closest(".pc-legend")) return;
 
-      // Only reset when clicking "blank-ish" areas:
-      //  - the panel background
-      //  - the SVG background (not a line/axis)
-      //  - the caption area
       const resetAllowed =
         target.id === "parallel-container" ||
         target.id === "parallel" ||
@@ -279,18 +321,22 @@ function createParallelCoords(data, config) {
       pcLegendFilter = null;
       refreshLegendStyles();
 
-      // 2) Clear all brushes (this also resets opacities via brush 'end' handler)
+      // 2) Clear all brushes
       axisBrushes.forEach(({ g, brush }) => {
         g.select(".brush").call(brush.move, null);
       });
 
-      // 3) Redraw full set for PCP
+      // 3) Clear brush tracking
+      pcDimensions.forEach((d) => (pcActiveBrushSelections[d.key] = null));
+      pcBrushActive = false;
+
+      // 4) Redraw full set for PCP
       updateParallelCoords(pcCurrentData);
 
-      // 4) Hide comparison panel, if open
+      // 5) Hide comparison panel, if open
       hidePcDetailPanel();
 
-      // 5) Clear any PCP-driven highlights in other charts
+      // 6) Clear PCP-driven highlights in other charts
       if (typeof highlightMapStateFromPCP === "function") {
         highlightMapStateFromPCP(null);
       }
@@ -312,7 +358,7 @@ function updateParallelCoords(data) {
 
   pcCurrentData = data;
 
-  const maxLines = 20000; // you already sample in main.js; this is a secondary cap
+  const maxLines = 20000;
 
   // Apply legend filter (PCP-only)
   let working = data;
@@ -322,12 +368,10 @@ function updateParallelCoords(data) {
     working = data.filter((d) => d.diabetes === 0);
   }
 
-  // Make a shallow copy so we can sort without mutating original
   let sampled =
     working.length > maxLines ? working.slice(0, maxLines) : working.slice();
 
-  // Sort so non-diabetic (0) are first, diabetic (1) last.
-  // Since later DOM elements are drawn on top, this makes red lines sit above green ones.
+  // Sort so non-diabetic are drawn first, diabetic last (red on top)
   sampled.sort((a, b) => {
     const aVal = a.diabetes || 0;
     const bVal = b.diabetes || 0;
@@ -352,7 +396,6 @@ function updateParallelCoords(data) {
     pcBaseOpacity = 0.2;
     pcBaseStrokeWidth = 1.0;
   }
-  // ---------------------------------------------
 
   // Clear existing lines so DOM order follows our sorted data
   pcLinesG.selectAll(".pc-line").remove();
@@ -361,7 +404,6 @@ function updateParallelCoords(data) {
     .selectAll(".pc-line")
     .data(sampled, (d, i) => d.__pc_id || (d.__pc_id = i + Math.random()));
 
-  // ---- Helpers for comparison panel ----
   function formatVal(v, decimals = 1) {
     if (v == null || isNaN(v)) return "NA";
     const num = +v;
@@ -371,7 +413,6 @@ function updateParallelCoords(data) {
   function buildComparisonPanel(event, d) {
     const panel = ensurePcDetailPanel();
 
-    // Compute diabetic / non-diabetic means in the *current* subset
     const diabs = pcCurrentData.filter((r) => r.diabetes === 1);
     const nondiabs = pcCurrentData.filter((r) => r.diabetes === 0);
 
@@ -387,10 +428,7 @@ function updateParallelCoords(data) {
       }
     ];
 
-    const means = {
-      diabetic: {},
-      non: {}
-    };
+    const means = { diabetic: {}, non: {} };
 
     metricDefs.forEach((m) => {
       means.diabetic[m.key] = diabs.length
@@ -413,7 +451,6 @@ function updateParallelCoords(data) {
         const refStr = formatVal(ref, m.decimals);
         const unit = m.unit ? ` ${m.unit}` : "";
 
-        // Special handling for AGE: no % badge, just value + avg
         if (m.key === "age") {
           return `
             <div class="pc-detail-metric-row">
@@ -426,7 +463,6 @@ function updateParallelCoords(data) {
           `;
         }
 
-        // For all other metrics, keep the % badge logic
         let badgeText = "≈ group avg";
         let badgeClass = "neutral";
 
@@ -489,7 +525,6 @@ function updateParallelCoords(data) {
       closeBtn.onclick = () => {
         hidePcDetailPanel();
 
-        // Clear any PCP-driven highlights in other charts when closing panel
         if (typeof highlightMapStateFromPCP === "function") {
           highlightMapStateFromPCP(null);
         }
@@ -502,7 +537,6 @@ function updateParallelCoords(data) {
       };
     }
 
-    // Position near click point
     const pageX = event.pageX;
     const pageY = event.pageY;
 
@@ -511,7 +545,6 @@ function updateParallelCoords(data) {
     panel.style.display = "block";
   }
 
-  // Only an enter selection is needed because we removed old paths
   lines
     .enter()
     .append("path")
@@ -520,11 +553,13 @@ function updateParallelCoords(data) {
     .attr("fill", "none")
     .attr("opacity", pcBaseOpacity)
     .attr("stroke-width", pcBaseStrokeWidth)
-    // STRONGER VISUAL HOVER
+
+    // ---- UPDATED HOVER: disabled while brush is active ----
     .on("mouseover", function () {
+      if (pcBrushActive) return;
+
       const thisNode = this;
 
-      // Fade all other lines
       pcLinesG
         .selectAll(".pc-line")
         .filter(function () {
@@ -533,26 +568,24 @@ function updateParallelCoords(data) {
         .attr("opacity", pcFadeOpacity)
         .attr("stroke-width", pcFadeStrokeWidth);
 
-      // Emphasize hovered line
       d3.select(this)
         .attr("opacity", pcHoverOpacity)
         .attr("stroke-width", pcHoverStrokeWidth)
         .raise();
     })
     .on("mouseout", function () {
-      // Reset ALL lines back to *current* base style
+      if (pcBrushActive) return;
+
       pcLinesG
         .selectAll(".pc-line")
         .attr("opacity", pcBaseOpacity)
         .attr("stroke-width", pcBaseStrokeWidth);
     })
+
     .on("click", function (event, d) {
-      // Don’t let this bubble up to the panel reset on container
       event.stopPropagation();
-      // If a shared tooltip exists, hide it to avoid clutter
       pcConfig?.hideTooltip && pcConfig.hideTooltip();
 
-      // NEW: cross-view highlights driven by PCP click (no filtering)
       if (typeof highlightMapStateFromPCP === "function") {
         highlightMapStateFromPCP(d.location || null);
       }
@@ -563,10 +596,12 @@ function updateParallelCoords(data) {
         highlightGenderFromPCP(d.gender || null);
       }
 
-      // Show comparison panel
       buildComparisonPanel(event, d);
     })
     .attr("d", (d) => pcPathForRow(d));
+
+  // ---- NEW: If a brush is active, re-apply its styling after redraw ----
+  applyActiveBrushStyling();
 }
 
 function pcPathForRow(d) {
