@@ -19,7 +19,7 @@ body {
 #top-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start; /* changed to support 3-item order */
   gap: 1.25rem;
   margin-bottom: 0.5rem;
   flex-wrap: wrap;
@@ -35,6 +35,46 @@ body {
   font-size: 1.6rem;
 }
 
+/* YouTube Tutorial button */
+#tutorial-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.28rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 999px;
+  text-decoration: none;
+  background: #ff0000; /* YouTube red */
+  color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(255, 0, 0, 0.35);
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.05s ease,
+    filter 0.15s ease;
+}
+
+#tutorial-btn:hover {
+  background: #e60000;
+  box-shadow: 0 2px 8px rgba(255, 0, 0, 0.5);
+  filter: saturate(1.05);
+}
+
+#tutorial-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 3px rgba(255, 0, 0, 0.35);
+}
+
+#tutorial-btn .yt-icon {
+  width: 14px;
+  height: 14px;
+  fill: #ffffff;
+  display: inline-block;
+}
+
 /* Right side: meta info + button */
 #header-meta {
   display: flex;
@@ -44,6 +84,7 @@ body {
   color: #6b7280;
   flex-wrap: wrap;
   justify-content: flex-end;
+  margin-left: auto; /* keeps meta group on the right */
 }
 
 .meta-item {

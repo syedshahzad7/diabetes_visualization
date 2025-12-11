@@ -7,9 +7,31 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
   </head>
   <body>
-    <!-- Top bar: title + meta info + reset button -->
+    <!-- Top bar: title + tutorial + meta info + reset button -->
     <div id="top-bar">
       <h1 id="title">Clinical Diabetes Profile Explorer</h1>
+
+      <!-- Tutorial button (YouTube) -->
+      <a
+        id="tutorial-btn"
+        href="https://youtu.be/Y0sUA5lEUOQ"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Open YouTube tutorial"
+      >
+        <!-- Inline YouTube play icon -->
+        <svg
+          class="yt-icon"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path
+            d="M23.5 6.2s-.2-1.6-.9-2.3c-.9-.9-1.9-.9-2.4-1C16.9 2.5 12 2.5 12 2.5h0s-4.9 0-8.2.4c-.5.1-1.5.1-2.4 1C.7 4.6.5 6.2.5 6.2S0 8.1 0 10v1.9c0 1.9.5 3.8.5 3.8s.2 1.6.9 2.3c.9.9 2.1.9 2.6 1 1.9.2 8 .4 8 .4s4.9 0 8.2-.4c.5-.1 1.5-.1 2.4-1 .7-.7.9-2.3.9-2.3s.5-1.9.5-3.8V10c0-1.9-.5-3.8-.5-3.8zM9.6 14.7V7.8l6.7 3.5-6.7 3.4z"
+          />
+        </svg>
+        <span>Tutorial</span>
+      </a>
 
       <div id="header-meta">
         <span class="meta-item">
